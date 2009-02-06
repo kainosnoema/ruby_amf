@@ -28,7 +28,7 @@ module RubyAMF
         return unless ClassMappings.capture_incoming_amf
         message_body = amfobj.input_stream
         body = amfobj.get_body_at(0)
-        path = "#{File.expand_path(RAILS_ROOT)}/vendor/plugins/rubyamf/amfcaptures"
+        path = "#{File.expand_path(RAILS_ROOT)}/vendor/plugins/ruby_amf/amfcaptures"
         FileUtils.mkdir_p path
         filename = "#{path}/#{body.target_uri}_#{body.service_method_name}"
         File.open(filename,"w").write(message_body) unless body.target_uri == "null"
