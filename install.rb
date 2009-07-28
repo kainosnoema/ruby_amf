@@ -4,12 +4,12 @@ begin
   overwrite = true
     
   if !File.exist?('./config/rubyamf_config.rb')
-    FileUtils.copy_file("./vendor/plugins/rubyamf/rails_installer_files/rubyamf_config.rb", "./config/rubyamf_config.rb", false)
+    FileUtils.copy_file("./vendor/plugins/ruby_amf/rails_installer_files/rubyamf_config.rb", "./config/rubyamf_config.rb", false)
   end
   
-  FileUtils.copy_file("./vendor/plugins/rubyamf/rails_installer_files/rubyamf_controller.rb","./app/controllers/rubyamf_controller.rb",false)
-  FileUtils.copy_file("./vendor/plugins/rubyamf/rails_installer_files/rubyamf_helper.rb","./app/helpers/rubyamf_helper.rb",false)
-  FileUtils.copy_file("./vendor/plugins/rubyamf/rails_installer_files/crossdomain.xml","./public/crossdomain.xml", false)
+  FileUtils.copy_file("./vendor/plugins/ruby_amf/rails_installer_files/rubyamf_controller.rb","./app/controllers/rubyamf_controller.rb",false)
+  FileUtils.copy_file("./vendor/plugins/ruby_amf/rails_installer_files/rubyamf_helper.rb","./app/helpers/rubyamf_helper.rb",false)
+  FileUtils.copy_file("./vendor/plugins/ruby_amf/rails_installer_files/crossdomain.xml","./public/crossdomain.xml", false)
   
   mime = true
   mime_types_file_exists = File.exists?('./config/initializers/mime_types.rb')
@@ -33,7 +33,7 @@ begin
   route_amf_controller = true
   File.open('./config/routes.rb', 'r') do |f|
     while  line = f.gets
-      if line.match("map.rubyamf_gateway 'rubyamf_gateway', :controller => 'rubyamf', :action => 'gateway")
+      if line.match("map.rubyamf_gateway 'amf', :controller => 'rubyamf', :action => 'gateway")
         route_amf_controller = false
         break
       end
@@ -43,7 +43,7 @@ begin
   if route_amf_controller
     routes = File.read('./config/routes.rb')
     updated_routes = routes.gsub(/(ActionController::Routing::Routes.draw do \|map\|)/) do |s|
-      "#{$1}\n  map.rubyamf_gateway 'rubyamf_gateway', :controller => 'rubyamf', :action => 'gateway'\n"
+      "#{$1}\n  map.rubyamf_gateway 'amf', :controller => 'rubyamf', :action => 'gateway'\n"
     end
     File.open('./config/routes.rb', 'w') do |file|
       file.write updated_routes
