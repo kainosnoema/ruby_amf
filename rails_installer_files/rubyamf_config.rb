@@ -1,10 +1,6 @@
 require 'app/configuration'
 module RubyAMF
   module Configuration
-    ClassMappings.ignore_fields = ['created_at','created_on','updated_at','updated_on']
-    ClassMappings.translate_case = true
-    ParameterMappings.scaffolding = true
-    
     #set the service path used in all requests
     # RubyAMF::App::RequestStore.service_path = File.expand_path(RAILS_ROOT) + '/app/controllers'
 
