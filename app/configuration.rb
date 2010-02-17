@@ -25,7 +25,7 @@ module RubyAMF
       # Aryk: I cleaned up how the class variables are called here. It doesnt matter if you use class variables or instance variables on the class level. Check out this simple tutorial
       # - http://sporkmonger.com/2007/2/19/instance-variables-class-variables-and-inheritance-in-ruby      
      
-      class << self           
+      class << self
         include RubyAMF::App
         include RubyAMF::Exceptions 
         
@@ -61,7 +61,7 @@ module RubyAMF
           rescue ActiveRecord::StatementInvalid => e
             # This error occurs during migrations, since the AR constructed above will check its columns, but the table won't exist yet.
             # We'll ignore the error if we're migrating.
-            raise unless ARGV.include?("migrate") or ARGV.include?("db:migrate")
+            raise unless ARGV.include?("migrate") or ARGV.include?("db:migrate") or ARGV.include?("rollback") or ARGV.include?("db:rollback")
           end
         end
         
