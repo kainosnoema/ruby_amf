@@ -257,7 +257,7 @@ module RubyAMF
             write_amf3_string("flex.messaging.io.ArrayCollection")
             @stored_objects_count += 1
           end
-          store_object array
+          store_object array.object_id
           @stream << "\t" # represents an amf3 array
           write_amf3_integer(array.length << 1 | 1)
           @stream << "\001" # represents an amf3 empty string #write empty for string keyed elements here, as it's never allowed from ruby

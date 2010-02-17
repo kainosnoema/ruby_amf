@@ -31,9 +31,9 @@ module RubyAMF
               return assumed_class
             else
               case ClassMappings.hash_key_access
-              when :symbol      : return Hash
-              when :string      : return Hash
-              when :indifferent : return HashWithIndifferentAccess
+              when :symbol      then return Hash
+              when :string      then return Hash
+              when :indifferent then return HashWithIndifferentAccess
               end
             end            
           end
@@ -43,15 +43,15 @@ module RubyAMF
       def self.set_value(obj, key, value)
         if obj.kind_of?(ActiveRecord::Base)
           #ATTRIBUTE
-          attributes = obj.instance_variable_get('@attributes')
-          attribs = (obj.attribute_names + ["id"]).inject({}){|hash, attr| hash[attr]=true ; hash}
+          attributes = obj.instance_variable_get(:@attributes)
+          attribs = (obj.attribute_names + [obj.class.primary_key]).inject({}){|hash, attr| hash[attr]=true ; hash}
           mapping = ClassMappings.get_vo_mapping_for_ruby_class(obj.class.name)
           if (!mapping && attribs[key]) || 
             (mapping && !mapping[:ignore_fields].include?(key) && ClassMappings.attribute_names[mapping[:ruby]][key])                  
             attributes[key] = value
           #ASSOCIATION
           elsif reflection = obj.class.reflections[key.to_sym] # is it an association
-            case reflection.macro  
+            case reflection.macro
             when :has_one
               obj.send("set_#{key}_target", value) if value
             when :belongs_to
@@ -61,26 +61,25 @@ module RubyAMF
             when :composed_of
               obj.send("#{key}=", value) if value # this sets the attributes to the corresponding values
             end
-          # build @methods hash
-          elsif
-            if mapping[:methods]
-              if !@methods
-                @methods = Hash.new
-              end
-              if !@methods[obj.class.name] #victorcoder: Fixed issue 107, method mapping for associations
-                @methods[obj.class.name]=Hash.new 
-              end
-              mapping[:methods].each do |method|
-                if method == key
-                  @methods["#{key}"] = value
-                end
+          elsif mapping[:methods]
+            if !@methods
+              @methods = Hash.new
+            end
+            if !@methods[obj.class.name] #victorcoder: Fixed issue 107, method mapping for associations
+              @methods[obj.class.name]=Hash.new 
+            end
+            mapping[:methods].each do |method|
+              if method == key
+                @methods["#{key}"] = value
               end
             end
           else
-            obj.instance_variable_set("@#{key}", value)
+            obj.instance_variable_set("@#{key}".to_sym, value)
           end
         elsif obj.kind_of? Hash
           obj[key] = value
+        elsif obj.kind_of? Object
+          obj.instance_variable_set("@#{key}".to_sym, value)
         else
           raise RUBYAMFException.new(RUBYAMFException.VO_ERROR, "Argument, #{obj}, is not an ActiveRecord::Base or a Hash.")
         end
@@ -88,11 +87,11 @@ module RubyAMF
              
       def self.finalize_object(obj)
         if obj.kind_of? ActiveRecord::Base
-          attributes = obj.instance_variable_get('@attributes')
-          attributes.delete("id") if attributes["id"]==0 || attributes['id']==nil # id attribute cannot be zero or nil
+          attributes = obj.instance_variable_get(:@attributes)
+          attributes.delete(obj.class.primary_key) if attributes[obj.class.primary_key]==0 || attributes[obj.class.primary_key]==nil # primary key attribute cannot be zero or nil
           attributes['type']=obj.class.name if  attributes['type']==nil && obj.class.superclass!=ActiveRecord::Base #STI: Always need 'type' on subclasses.
-          attributes[obj.class.locking_column]=0 if obj.class.locking_column && attributes[obj.class.locking_column]==nil #Missing lock_version is equivalent to 0.
-          obj.instance_variable_set("@new_record", false) if attributes["id"] # the record already exists in the database
+          # attributes[obj.class.locking_column]=0 if obj.class.locking_column && attributes[obj.class.locking_column]==nil #Missing lock_version is equivalent to 0.
+          obj.instance_variable_set(:@new_record, false) if attributes[obj.class.primary_key] # the record already exists in the database
           #superstition
           if (obj.new_record?)
             obj.created_at = nil if obj.respond_to? "created_at"
@@ -118,9 +117,9 @@ module RubyAMF
           return ruby_obj
         else
           case ClassMappings.hash_key_access
-          when :symbol      : return obj.symbolize_keys!
-          when :string      : return obj # by default the keys are a string type, so just return the obj
-          when :indifferent : return HashWithIndifferentAccess.new(obj)
+          when :symbol      then return obj.symbolize_keys!
+          when :string      then return obj # by default the keys are a string type, so just return the obj
+          when :indifferent then return HashWithIndifferentAccess.new(obj)
           # else  # TODO: maybe add a raise FlexError since they somehow put the wrong value for this feature
           end
         end
@@ -132,7 +131,7 @@ module RubyAMF
         instance_vars = obj.instance_variables
         methods = []
         if map = ClassMappings.get_vo_mapping_for_ruby_class(obj.class.to_s)
-          if map[:type]=="active_record"
+          if map[:type] == "active_record"
             attributes_hash = obj.attributes
             (map[:attributes]||attributes_hash.keys).each do |attr| # need to use dup because sometimes the attr is frozen from the AR attributes hash
               attr_name = attr
@@ -146,7 +145,7 @@ module RubyAMF
                 instance_vars << ("@"+assoc) if obj.send(assoc) # this will make sure they are instantiated and only load it if they have a value.
               end
             elsif ClassMappings.check_for_associations
-              instance_vars = obj.instance_variables.reject{|assoc| ["@attributes","@new_record","@read_only","@attributes_cache"].include?(assoc)}
+              instance_vars = obj.instance_variables.reject{|assoc| [:@attributes,:@new_record,:@read_only,:@attributes_cache].include?(assoc.to_sym)}
             end
             
             # if there are AR methods they want in the AS object as an attribute, see about them here.
@@ -168,7 +167,7 @@ module RubyAMF
             end
             instance_vars = []
             if ClassMappings.check_for_associations
-              instance_vars = obj.instance_variables.reject{|assoc| ["@attributes","@new_record","@read_only","@attributes_cache"].include?(assoc)}
+              instance_vars = obj.instance_variables.reject{|assoc| [:@attributes,:@new_record,:@read_only,:@attributes_cache].include?(assoc.to_sym)}
             end
           end
         end

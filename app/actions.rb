@@ -97,9 +97,10 @@ module RubyAMF
           raise RUBYAMFException.new(RUBYAMFException.UNDEFINED_OBJECT_REFERENCE_ERROR, "There was an error loading the service class #{@amfbody.service_class_name}")
         end
         
-        if @service.private_methods.include?(@amfbody.service_method_name)
+        # Ruby 1.9 Compatibility - public_methods.include? to public_methods.any?
+        if @service.private_methods.any? { |m| m.to_s == @amfbody.service_method_name }
           raise RUBYAMFException.new(RUBYAMFException.METHOD_ACCESS_ERROR, "The method {#{@amfbody.service_method_name}} in class {#{@amfbody.service_class_file_path}} is declared as private, it must be defined as public to access it.")
-        elsif !@service.public_methods.include?(@amfbody.service_method_name)
+        elsif !@service.public_methods.any? { |m| m.to_s == @amfbody.service_method_name }
           raise RUBYAMFException.new(RUBYAMFException.METHOD_UNDEFINED_METHOD_ERROR, "The method {#{@amfbody.service_method_name}} in class {#{@amfbody.service_class_file_path}} is not declared.")
         end
         

@@ -255,7 +255,8 @@ module RubyAMF
           #thanks Karl von Randow for this
           if length > 0
             str = String.new(readn(length)) #specifically cast as string, as we're reading verbatim from the stream
-            str.toutf8 #convert to utf8
+            #convert to utf8 - Ruby 1.9 compatibility
+            defined? str.toutf8 ? str.toutf8 : (str.respond_to?(:force_encoding) ? str.force_encoding("UTF-8") : str)
             @stored_strings << str
           end
           return str
@@ -375,7 +376,6 @@ module RubyAMF
             @stored_defs << class_definition
           end
           action_class_name = class_definition['as_class_name'] #get the className according to type
-          
           # check to see if its the first main amf object or a flex message obj, because then we need a _explicitType field type and skip some things
           skip_mapping = if action_class_name && action_class_name.include?("flex.messaging")
             obj = VoHash.new # initialize an empty VoHash value holder    

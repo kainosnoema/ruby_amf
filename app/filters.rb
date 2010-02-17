@@ -43,11 +43,11 @@ module RubyAMF
         if (auth_header = amfobj.get_header_by_key('Credentials'))
           RequestStore.auth_header = auth_header #store the auth header for later
           case ClassMappings.hash_key_access
-          when :string:
+          when :string then
             auth = {'username' => auth_header.value['userid'], 'password' => auth_header.value['password']}
-          when :symbol:
+          when :symbol then
             auth = {:username => auth_header.value['userid'], :password => auth_header.value['password']}
-          when :indifferent:
+          when :indifferent then
             auth = HashWithIndifferentAccess.new({:username => auth_header.value['userid'], :password => auth_header.value['password']})
           end
           RequestStore.rails_authentication = auth
@@ -66,7 +66,7 @@ module RubyAMF
             begin #this is where any exception throughout the RubyAMF Process gets transformed into a relevant AMF0/AMF3 faultObject
               # action.run(body)
               seconds = Benchmark.realtime{ action.run(body) }
-              puts ">>>>>>>> RubyAMF >>>>>>>>> #{action} took: #{'%.5f' % seconds} secs"
+              #puts ">>>>>>>> RubyAMF >>>>>>>>> #{action} took: #{'%.5f' % seconds} secs"
             rescue RUBYAMFException => ramfe
               puts ramfe.message
               puts ramfe.backtrace
@@ -89,7 +89,7 @@ module RubyAMF
       def run(amfobj) 
         # AMFSerializer.new(amfobj).run 
         seconds = Benchmark.realtime{ AMFSerializer.new(amfobj).run }
-        puts ">>>>>>>> RubyAMF >>>>>>>>> Serialization took: #{'%.5f' % seconds} secs"
+        # puts ">>>>>>>> RubyAMF >>>>>>>>> Serialization took: #{'%.5f' % seconds} secs"
       end
     end
   end
