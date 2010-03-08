@@ -47,9 +47,15 @@ module RubyAMF
           attribs = (obj.attribute_names + [obj.class.primary_key]).inject({}){|hash, attr| hash[attr]=true ; hash}
           mapping = ClassMappings.get_vo_mapping_for_ruby_class(obj.class.name)
           if (!mapping && attribs[key]) || 
-            (mapping && !mapping[:ignore_fields].include?(key) && ClassMappings.attribute_names[mapping[:ruby]][key])                  
-            attributes[key] = value
-          #ASSOCIATION
+            (mapping && !mapping[:ignore_fields].include?(key) && ClassMappings.attribute_names[mapping[:ruby]][key])
+            # this sets the attributes using de method "key=" of the class
+            if value == false
+              obj.send("#{key}=", 'false')
+            else
+              obj.send("#{key}=", value)
+            end
+            #attributes[key] = value
+            #ASSOCIATION
           elsif reflection = obj.class.reflections[key.to_sym] # is it an association
             case reflection.macro
             when :has_one
@@ -61,7 +67,7 @@ module RubyAMF
             when :composed_of
               obj.send("#{key}=", value) if value # this sets the attributes to the corresponding values
             end
-          elsif mapping[:methods]
+          elsif mapping[:methods] && mapping[:methods].include?(key)
             if !@methods
               @methods = Hash.new
             end
@@ -131,7 +137,8 @@ module RubyAMF
         instance_vars = obj.instance_variables
         methods = []
         if map = ClassMappings.get_vo_mapping_for_ruby_class(obj.class.to_s)
-          if map[:type] == "active_record"
+          # Change to accept active_resource requests
+          if map[:type] == "active_record" || map[:type]=="active_resource"
             attributes_hash = obj.attributes
             (map[:attributes]||attributes_hash.keys).each do |attr| # need to use dup because sometimes the attr is frozen from the AR attributes hash
               attr_name = attr

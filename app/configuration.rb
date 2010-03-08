@@ -57,6 +57,9 @@ module RubyAMF
             if mapping[:type] == "active_record" 
               rubyobj = mapping[:ruby].constantize.new
               @attribute_names[mapping[:ruby]] = (rubyobj.attribute_names + [rubyobj.class.primary_key]).inject({}){|hash, attr| hash[attr]=true ; hash} # include the id attribute
+            # Change to accept active_resource requests
+            elsif mapping[:type] == "active_resource"
+              @attribute_names[mapping[:ruby]] = (mapping[:ruby].constantize.new.instance_variable_names + ["id"]).inject({}){|hash, attr| hash[attr]=true ; hash} # include the id attribute
             end
           rescue ActiveRecord::StatementInvalid => e
             # This error occurs during migrations, since the AR constructed above will check its columns, but the table won't exist yet.
@@ -71,6 +74,8 @@ module RubyAMF
               vo_mapping = vo_mapping.dup # need to duplicate it or else we will overwrite the keys from the original mappings
               vo_mapping[:attributes]   = vo_mapping[:attributes][@current_mapping_scope]||[]   if vo_mapping[:attributes].is_a?(Hash)      # don't include any of these attributes if there is no scope
               vo_mapping[:associations] = vo_mapping[:associations][@current_mapping_scope]||[] if vo_mapping[:associations].is_a?(Hash)    # don't include any of these attributes
+              #Change to use methods with de mapping_scope 
+              vo_mapping[:methods] = vo_mapping[:methods][@current_mapping_scope]||[] if vo_mapping[:methods].is_a?(Hash)    # don't include any of these attributes
               vo_mapping
             end
           )
