@@ -89,7 +89,7 @@ module RubyAMF
         if obj.kind_of? ActiveRecord::Base
           attributes = obj.instance_variable_get(:@attributes)
           attributes.delete(obj.class.primary_key) if attributes[obj.class.primary_key]==0 || attributes[obj.class.primary_key]==nil # primary key attribute cannot be zero or nil
-          attributes['type']=obj.class.name if  attributes['type']==nil && obj.class.superclass!=ActiveRecord::Base #STI: Always need 'type' on subclasses.
+          attributes[obj.class.inheritance_column] = obj.class.name if attributes[obj.class.inheritance_column] == nil && obj.class.superclass != ActiveRecord::Base #STI: Always need 'type' on subclasses.
           # attributes[obj.class.locking_column]=0 if obj.class.locking_column && attributes[obj.class.locking_column]==nil #Missing lock_version is equivalent to 0.
           obj.instance_variable_set(:@new_record, false) if attributes[obj.class.primary_key] # the record already exists in the database
           #superstition
@@ -117,10 +117,10 @@ module RubyAMF
           return ruby_obj
         else
           case ClassMappings.hash_key_access
-          when :symbol      then return obj.symbolize_keys!
-          when :string      then return obj # by default the keys are a string type, so just return the obj
-          when :indifferent then return HashWithIndifferentAccess.new(obj)
-          # else  # TODO: maybe add a raise FlexError since they somehow put the wrong value for this feature
+            when :symbol      then return obj.symbolize_keys!
+            when :string      then return obj # by default the keys are a string type, so just return the obj
+            when :indifferent then return HashWithIndifferentAccess.new(obj)
+            # else  # TODO: maybe add a raise FlexError since they somehow put the wrong value for this feature
           end
         end
       end

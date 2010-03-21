@@ -24,7 +24,7 @@ module RubyAMF
       
       #do an entire read operation on a complete amf request
       def rubyamf_read(amfobj)
-        RequestStore.amf_encoding = 'amf0'
+        RequestStore.amf_encoding = 'amf3'
         @amfobj = amfobj
         @stream = @amfobj.input_stream
         preamble
@@ -397,7 +397,7 @@ module RubyAMF
               raise( RUBYAMFException.new(RUBYAMFException.USER_ERROR, "Unable to read externalizable data type #{type}"))
             end            
           else            
-            translate_case = !skip_mapping&&ClassMappings.translate_case  # remove the need for a method call / also, don't want to convert on main remoting object
+            translate_case = !skip_mapping && ClassMappings.translate_case  # remove the need for a method call / also, don't want to convert on main remoting object
             class_definition['members'].each do |key|
               value = read_amf3
               #if (value)&& value != 'NaN'# have to read key to move the reader ahead in the stream
