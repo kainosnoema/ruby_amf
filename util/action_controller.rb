@@ -8,7 +8,7 @@ ActionController::Base.class_eval do
         @performed_render = true
         #store results on RequestStore, can't prematurely return or send_data.
         RubyAMF::App::RequestStore.render_amf_results = options[:amf]
-        RubyAMF::Configuration::ClassMappings.current_mapping_scope = options[:class_mapping_scope]||RubyAMF::Configuration::ClassMappings.default_mapping_scope
+        RubyAMF::Configuration::ClassMappings.current_mapping_scope = options[:class_mapping_scope] || RubyAMF::Configuration::ClassMappings.default_mapping_scope
       else
         render_without_amf(options,&block)
       end
