@@ -1,15 +1,14 @@
 module RubyAMF
-  module IO
+  module AMFIo
     class AMFSerializer
-
-      require 'io/read_write'
 
       include RubyAMF::AMF
       include RubyAMF::Configuration
-      include RubyAMF::App
-      include RubyAMF::IO::BinaryWriter
-      include RubyAMF::IO::Constants
+
+      include RubyAMF::AMFIo::BinaryWriter
+      include RubyAMF::AMFIo::Constants
       include RubyAMF::VoHelper
+      
       attr_accessor :stream
 
       def initialize(amfobj)
@@ -73,7 +72,7 @@ module RubyAMF
       
       #write Ruby data as AMF to output stream
       def write(value)
-        if RequestStore.amf_encoding == 'amf3'
+        if @amfobj.amf_encoding == 'amf3'
           write_byte(AMF3_TYPE)
           write_amf3(value)
           

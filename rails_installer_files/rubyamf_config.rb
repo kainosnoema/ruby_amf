@@ -1,8 +1,7 @@
-require 'app/configuration'
 module RubyAMF
   module Configuration
     #set the service path used in all requests
-    # RubyAMF::App::RequestStore.service_path = File.expand_path(RAILS_ROOT) + '/app/controllers'
+    # RubyAMF::Gateway.service_path = File.expand_path(RAILS_ROOT) + '/app/controllers'
 
     # => CLASS MAPPING CONFIGURATION
     

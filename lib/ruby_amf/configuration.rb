@@ -1,10 +1,10 @@
 #This stores supporting configuration classes used in the config file to register class mappings and parameter mappings etc.
-require 'app/request_store'
-require 'exception/rubyamf_exception'
 module RubyAMF
   module Configuration
+    
     #ClassMappings configuration support class
     class ClassMappings
+      include RubyAMF::Exceptions
       
       # these NEED to be outside the class << self to work
       @ignore_fields = ['created_at','created_on','updated_at','updated_on']
@@ -26,9 +26,6 @@ module RubyAMF
       # - http://sporkmonger.com/2007/2/19/instance-variables-class-variables-and-inheritance-in-ruby      
      
       class << self
-        include RubyAMF::App
-        include RubyAMF::Exceptions 
-        
         attr_accessor :ignore_fields, :use_array_collection, :default_mapping_scope, :force_active_record_ids, :attribute_names, :capture_incoming_amf,
           :use_ruby_date_time, :current_mapping_scope, :check_for_associations, :translate_case, :assume_types, :hash_key_access  #the rails parameter mapping type
         
@@ -83,6 +80,8 @@ module RubyAMF
     end
     
     class ParameterMappings
+      include RubyAMF::Exceptions
+      
       @parameter_mappings = {}
       @always_add_to_params = true
       @scaffolding = false

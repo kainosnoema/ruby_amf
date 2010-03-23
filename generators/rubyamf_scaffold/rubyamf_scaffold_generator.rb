@@ -1,5 +1,5 @@
 #copied from rails tag rel_2-0-0_RC1 scaffold generator
-class RubyamfScaffoldGenerator < Rails::Generator::NamedBase
+class RubyamfScaffoldGenerator < Rails::Generators::NamedBase
   default_options :skip_timestamps => false, :skip_migration => false
 
   attr_reader   :controller_name,

@@ -1,6 +1,6 @@
 require 'rbconfig'
 
-class RubyamfMappingsGenerator < Rails::Generator::Base
+class RubyamfMappingsGenerator < Rails::Generators::Base
   
   MODEL_DIR = File.join(RAILS_ROOT, "app/models")
   

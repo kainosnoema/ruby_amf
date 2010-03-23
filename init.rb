@@ -1,10 +1,4 @@
 $:.unshift(File.dirname(__FILE__))
 
-#utils must be first
-require 'util/string'
-require 'util/vo_helper'
-require 'util/active_record'
-require 'util/action_controller'
-require 'app/fault_object'
-require 'app/rails_gateway'
-require File.expand_path(RAILS_ROOT) + '/config/rubyamf_config' #run the configuration
+require 'ruby_amf'
+require File.expand_path(Rails.root) + '/config/rubyamf_config' #run the configuration

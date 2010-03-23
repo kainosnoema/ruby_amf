@@ -1,16 +1,15 @@
-require 'app/request_store'
-require 'app/configuration'
+# this extends ActionController::Base to help with rendering and credentials
 ActionController::Base.class_eval do
   def render_with_amf(options = nil, &block)
     begin
       if options && options.is_a?(Hash) && options.keys.include?(:amf)
         #set the @performed_render flag to avoid double renders
         @performed_render = true
-        #store results on RequestStore, can't prematurely return or send_data.
-        RubyAMF::App::RequestStore.render_amf_results = options[:amf]
+        #store results, can't prematurely return or send_data
+        RubyAMF::Gateway.service_result = options[:amf]
         RubyAMF::Configuration::ClassMappings.current_mapping_scope = options[:class_mapping_scope] || RubyAMF::Configuration::ClassMappings.default_mapping_scope
       else
-        render_without_amf(options,&block)
+        render_without_amf(options, &block)
       end
     rescue Exception => e
       #suppress missing template warnings
@@ -20,10 +19,8 @@ ActionController::Base.class_eval do
   alias_method_chain :render, :amf
 end
 
-#This class extends ActionController::Base
 class ActionController::Base
   attr_accessor :is_amf
-  attr_accessor :is_rubyamf #-> for simeon :)-
   attr_accessor :rubyamf_params # this way they can always access the rubyamf_params
   
   #Higher level "credentials" method that returns credentials wether or not
@@ -36,7 +33,7 @@ class ActionController::Base
 private
   #setCredentials access
   def amf_credentials
-    RubyAMF::App::RequestStore.rails_authentication
+    RubyAMF::Gateway.authentication
   end
   
   #remoteObject setRemoteCredentials retrieval

@@ -3,12 +3,14 @@
 #generic object with some specific keys set, such as ({error:'someError', code:3}). That is still a pain because it gets mapped to
 #the onResult function still. So return one of these objects to RubyAMF and it will auto generate a faultObject to return to flash
 #so that it maps correctly to the onFault handler.
-class FaultObject < Hash
-  def initialize(message = '', payload=nil)
-    self['faultCode'] = 1
-    self['code'] = 1
-    self['message'] = message
-    self['faultString'] = message
-    self['payload'] = payload
+module RubyAMF
+  class FaultObject < Hash
+    def initialize(message = '', payload=nil)
+      self['faultCode'] = 1
+      self['code'] = 1
+      self['message'] = message
+      self['faultString'] = message
+      self['payload'] = payload
+    end
   end
 end

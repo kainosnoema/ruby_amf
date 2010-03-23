@@ -1,4 +1,3 @@
-#This Install script is for Rails Plugin Installation. If using the RubyAMF Lite this is not needed.
 begin
   require 'fileutils'
   overwrite = true
@@ -9,7 +8,6 @@ begin
     FileUtils.copy_file( File.join(install_files_root, "rubyamf_config.rb", "./config/rubyamf_config.rb", false)
   end
   
-  FileUtils.copy_file( File.join(install_files_root, "rubyamf_controller.rb","./app/controllers/rubyamf_controller.rb",false)
   FileUtils.copy_file( File.join(install_files_root, "rubyamf_helper.rb","./app/helpers/rubyamf_helper.rb",false)
   FileUtils.copy_file( File.join(install_files_root, "crossdomain.xml","./public/crossdomain.xml", false)
   
@@ -35,7 +33,7 @@ begin
   route_amf_controller = true
   File.open('./config/routes.rb', 'r') do |f|
     while  line = f.gets
-      if line.match("map.rubyamf_gateway 'rubyamf_gateway', :controller => 'rubyamf', :action => 'gateway")
+      if line.match("match '/rubyamf_gateway', :to => RubyAMF::Gateway") 
         route_amf_controller = false
         break
       end
@@ -44,8 +42,8 @@ begin
 
   if route_amf_controller
     routes = File.read('./config/routes.rb')
-    updated_routes = routes.gsub(/(ActionController::Routing::Routes.draw do \|map\|)/) do |s|
-      "#{$1}\n  map.rubyamf_gateway 'rubyamf_gateway', :controller => 'rubyamf', :action => 'gateway'\n"
+    updated_routes = routes.gsub(/(Application.routes.draw do)/) do |s|
+      "#{$1}\n  match '/rubyamf_gateway', :to => RubyAMF::Gateway\n"
     end
     File.open('./config/routes.rb', 'w') do |file|
       file.write updated_routes

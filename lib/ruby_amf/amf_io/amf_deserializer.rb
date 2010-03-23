@@ -1,35 +1,32 @@
 module RubyAMF
-  module IO
+  module AMFIo
     class AMFDeserializer
       
-      require 'io/read_write'
-      
       include RubyAMF::AMF
-      include RubyAMF::App
       include RubyAMF::Configuration
       include RubyAMF::Exceptions
-      include RubyAMF::IO::BinaryReader
-      include RubyAMF::IO::Constants
-      include RubyAMF::VoHelper
-      attr_accessor :stream
-      attr_accessor :stream_position      
-      attr_accessor :amf0_object_default_members_ignore
       
-      def initialize
+      include RubyAMF::AMFIo::BinaryReader
+      include RubyAMF::AMFIo::Constants
+      include RubyAMF::VoHelper
+      
+      attr_accessor :raw, :stream, :stream_position, :amf0_object_default_members_ignore
+      
+      def initialize(amfobj)
         @raw = true
         @rawkickoff = true
         @stream_position = 0
         reset_referencables
+        
+        @amfobj = amfobj
+        @stream = @amfobj.input_stream
       end
       
       #do an entire read operation on a complete amf request
-      def rubyamf_read(amfobj)
-        RequestStore.amf_encoding = 'amf3'
-        @amfobj = amfobj
-        @stream = @amfobj.input_stream
-        preamble
-        headers
-        bodys
+      def run
+        read_preamble
+        read_headers
+        read_bodies
       end
       
       def reset_referencables
@@ -41,7 +38,7 @@ module RubyAMF
         @stored_defs = []
       end
       
-      def preamble
+      def read_preamble
         version = read_int8 #first byte, not anything important
         if version != 0 && version != 3
           raise RUBYAMFException.new(RUBYAMFException.VERSION_ERROR, "The amf version is incorrect")
@@ -51,7 +48,7 @@ module RubyAMF
         client = read_int8
       end
       
-      def headers
+      def read_headers
         @amf0_object_default_members_ignore = {
           'Credentials' => true,
           'coldfusion'  => true,
@@ -91,7 +88,7 @@ module RubyAMF
         end
       end
       
-      def bodys
+      def read_bodies
         @amf0_object_default_members_ignore = {}
         
         #find the total number of body elements
@@ -129,7 +126,7 @@ module RubyAMF
       def read(type)
         case type
         when AMF3_TYPE
-          RequestStore.amf_encoding = 'amf3'
+          @amfobj.amf_encoding = 'amf3'
           read_amf3
         when AMF_NUMBER
           read_number
@@ -553,6 +550,7 @@ module RubyAMF
       def read_xml
         read_long_utf
       end
+      
     end
   end
 end
