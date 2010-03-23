@@ -17,6 +17,7 @@ module RubyAMF
       include RubyAMF::Exceptions
       include RubyAMF::Configuration
       include RubyAMF::AMF
+      include RubyAMF::AMF::Utils
       
       # fully valid Rack application
       def call(env)
@@ -29,7 +30,6 @@ module RubyAMF
           return self.html_response
         else
           amfobj = AMFObject.new(self.request.raw_post)
-          
           amfobj.bodies.each do |amfbody|
             
             if amfbody.exec == false
@@ -37,7 +37,7 @@ module RubyAMF
                 amfbody.results = create_acknowledge_object(amfbody.get_meta('messageId'), amfbody.get_meta('clientId')) #generate an empty acknowledge message here, no body needed for a ping
                 amfbody.success! #set the success response uri flag (/onResult)
               end
-              return
+              next
             end
             
             begin #this is where any RubyAMF exception during service call gets transformed into a relevant AMF0/AMF3 faultObject
@@ -104,7 +104,7 @@ module RubyAMF
           #amf3
           amfbody.results = result
           if amfbody.special_handling == 'RemotingMessage'
-            wrapper = create_acknowledge_object(@amfbody.get_meta('messageId'), @amfbody.get_meta('clientId'))
+            wrapper = create_acknowledge_object(amfbody.get_meta('messageId'), amfbody.get_meta('clientId'))
             wrapper["body"] = result
             amfbody.results = wrapper
           end
