@@ -1,7 +1,6 @@
 require 'zlib'
 module RubyAMF
   class Gateway
-    
     @@service_path = File.expand_path(Rails.root) + '/app/controllers'
     cattr_accessor  :service_path,
                     :service,
@@ -15,13 +14,13 @@ module RubyAMF
                     :response
     
     class << self
-      include ActionDispatch
       include RubyAMF::Exceptions
       include RubyAMF::Configuration
       include RubyAMF::AMF
       
       # fully valid Rack application
       def call(env)
+        self.authentication = nil # clear authentication
         self.request = ActionDispatch::Request.new(env)
         self.response = ActionDispatch::Response.new
         self.gzip = env['ACCEPT_ENCODING'].to_s.match(/gzip,[\s]{0,1}deflate/)
@@ -141,7 +140,7 @@ module RubyAMF
           service_request.parameters['controller']  = service_request.request_parameters['controller'] = service_request.path_parameters['controller'] = controller
           service_request.parameters['action']      = service_request.request_parameters['action']     = service_request.path_parameters['action']     = action
           service_request.env['PATH_INFO']          = service_request.env['REQUEST_PATH']              = service_request.env['REQUEST_URI']            = "#{controller}/#{action}"
-          service_request.env['HTTP_ACCEPT']        = 'application/x-amf,' + service_request.env['HTTP_ACCEPT'].to_s
+          service_request.env['HTTP_ACCEPT']        = 'application/x-amf'
           
           service_request
         end

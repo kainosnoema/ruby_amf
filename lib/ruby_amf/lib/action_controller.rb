@@ -3,17 +3,15 @@ ActionController::Base.class_eval do
   def render_with_amf(options = nil, &block)
     begin
       if options && options.is_a?(Hash) && options.keys.include?(:amf)
-        #set the @performed_render flag to avoid double renders
-        @performed_render = true
-        #store results, can't prematurely return or send_data
-        RubyAMF::Gateway.service_result = options[:amf]
         RubyAMF::Configuration::ClassMappings.current_mapping_scope = options[:class_mapping_scope] || RubyAMF::Configuration::ClassMappings.default_mapping_scope
+
+        RubyAMF::Gateway.service_result = options[:amf]  #store results, can't prematurely return or send_data
+        @performed_render = true #set the @performed_render flag to avoid double renders
       else
         render_without_amf(options, &block)
       end
     rescue Exception => e
-      #suppress missing template warnings
-      raise e if !e.message.match(/^Missing template/)
+      raise e if !e.message.match(/^Missing template/) #suppress missing template warnings
     end
   end
   alias_method_chain :render, :amf
@@ -26,8 +24,8 @@ class ActionController::Base
   #Higher level "credentials" method that returns credentials wether or not
   #it was from setRemoteCredentials, or setCredentials
   def credentials
-    empty_auth = {:username => nil, :password => nil}
-    amf_credentials||html_credentials||empty_auth #return an empty auth, this watches out for being the cause of an exception, (nil[])
+    #return an empty auth, this watches out for being the cause of an exception, (nil[])
+    amf_credentials || html_credentials || {:username => nil, :password => nil}
   end
   
 private
