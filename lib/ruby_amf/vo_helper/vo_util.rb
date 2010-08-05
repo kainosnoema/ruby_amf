@@ -4,6 +4,17 @@ module RubyAMF
       include RubyAMF::Exceptions
       include RubyAMF::Configuration
       
+      AR_INSTANCE_VARS = [  :@attributes,
+                            :@new_record,
+                            :@read_only,
+                            :@readonly,
+                            :@attributes_cache,
+                            :@marked_for_destruction,
+                            :@destroyed,
+                            :@previously_changed,
+                            :@changed_attributes
+                            ]
+      
       def self.get_ruby_class(action_class_name)
         mapping = ClassMappings.get_vo_mapping_for_actionscript_class(action_class_name)
         if mapping
@@ -134,7 +145,7 @@ module RubyAMF
                 instance_vars << ("@"+assoc) if obj.send(assoc) # this will make sure they are instantiated and only load it if they have a value.
               end
             elsif ClassMappings.check_for_associations
-              instance_vars = obj.instance_variables.reject{|assoc| [:@attributes,:@new_record,:@read_only,:@attributes_cache].include?(assoc.to_sym)}
+              instance_vars = obj.instance_variables.reject{|assoc| AR_INSTANCE_VARS.include?(assoc.to_sym)}
             end
             
             # if there are AR methods they want in the AS object as an attribute, see about them here.
@@ -156,7 +167,7 @@ module RubyAMF
             end
             instance_vars = []
             if ClassMappings.check_for_associations
-              instance_vars = obj.instance_variables.reject{|assoc| [:@attributes,:@new_record,:@read_only,:@attributes_cache].include?(assoc.to_sym)}
+              instance_vars = obj.instance_variables.reject{|assoc| AR_INSTANCE_VARS.include?(assoc.to_sym)}
             end
           end
         end
