@@ -29,9 +29,9 @@ module RubyAMF
    
       def run
         #write the amf version
-        write_int16_network(0)
+        write_int16(0)
         @header_count = @amfobj.num_outheaders
-        write_int16_network(@header_count)
+        write_int16(@header_count)
       
         0.upto(@header_count - 1) do |i|
           #get the header obj at index
@@ -42,7 +42,7 @@ module RubyAMF
          
           #write the version
           write_byte(@header.required)
-          write_word32_network(-1) #the usual four bytes of FF
+          write_word32(-1) #the usual four bytes of FF
          
           #write the header data
           write(@header.value)
@@ -50,7 +50,7 @@ module RubyAMF
       
         #num bodies
         @body_count = @amfobj.num_body
-        write_int16_network(@body_count)
+        write_int16(@body_count)
       
         0.upto(@body_count - 1) do |i|  
           reset_referencables #reset any stored references in this scope
@@ -63,7 +63,7 @@ module RubyAMF
          
           #write null (usually target, no use for though)
           write_utf("null")
-          write_word32_network(-1) #the usual four bytes of FF
+          write_word32(-1) #the usual four bytes of FF
          
           #write the results of the service call
           write(@body.results)
@@ -313,12 +313,12 @@ module RubyAMF
         @stream << "\v" #write_byte(11)
         write_double(seconds * 1000)
         offset = Time.zone_offset(Time.now.zone)
-        write_int16_network(offset / 60 * -1)
+        write_int16(offset / 60 * -1)
       end
 
       def write_array(array)
         @stream << "\n" #write_byte(10)
-        write_word32_network(array.length)
+        write_word32(array.length)
         array.each do |el| 
           write(el)
         end
@@ -332,7 +332,7 @@ module RubyAMF
           write(value)
         end
         #write the end object flag 0x00, 0x00, 0x09
-        write_int16_network(0)
+        write_int16(0)
         @stream << "\t" #write_byte(9)
       end
 
@@ -351,7 +351,7 @@ module RubyAMF
         end
 
         #write the end object flag 0x00, 0x00, 0x09
-        write_int16_network(0)
+        write_int16(0)
         @stream << "\t" #write_byte(9)
       end
 

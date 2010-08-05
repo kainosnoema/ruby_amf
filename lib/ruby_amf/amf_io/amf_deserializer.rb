@@ -61,7 +61,7 @@ module RubyAMF
           'm_debug'     => true}
         
         #Find total number of header elements
-        header_count = read_word16_network
+        header_count = read_word16
         
         0.upto(header_count - 1) do
           
@@ -72,7 +72,7 @@ module RubyAMF
           required = read_booleanr
           
           #Grab the length of the header element
-          length = read_word32_network
+          length = read_word32
           
           #Grab the type of the element
           type = read_byte
@@ -92,7 +92,7 @@ module RubyAMF
         @amf0_object_default_members_ignore = {}
         
         #find the total number of body elements
-        body_count = read_int16_network
+        body_count = read_int16
         
         #Loop over all the body elements
         0.upto(body_count - 1) do
@@ -106,7 +106,7 @@ module RubyAMF
           response = read_utf
           
           #Get the length of the body element
-          length = read_word32_network
+          length = read_word32
           
           #Grab the type of the element
           type = read_byte
@@ -145,7 +145,7 @@ module RubyAMF
         when AMF_REFERENCE
           return nil #TODO Implement this
         when AMF_MIXED_ARRAY
-          length = read_int32_network #long, don't do anything with it
+          length = read_int32 #long, don't do anything with it
           read_mixed_array
         when AMF_EOO
           return nil
@@ -154,7 +154,7 @@ module RubyAMF
         when AMF_DATE
           read_date
         when AMF_LONG_STRING
-          utflen = read_int32_network #don't touch the length
+          utflen = read_int32 #don't touch the length
           read_utf
         when AMF_UNSUPPORTED
           raise RUBYAMFException.new(RUBYAMFException.UNSUPPORTED_AMF0_TYPE, 'Unsupported type')
@@ -461,7 +461,7 @@ module RubyAMF
 
       def read_array
         ret = [] #create new array
-        length = read_word32_network # Grab the length of the array
+        length = read_word32 # Grab the length of the array
 
         #catch empty arguments
         if !length
@@ -483,7 +483,7 @@ module RubyAMF
 
         #flash client timezone offset (which comes in minutes, 
         #but incorrectly signed), convert to seconds, and fix the sign.
-        client_zone_offset = (read_int16_network) * 60 * -1  # now we have seconds
+        client_zone_offset = (read_int16) * 60 * -1  # now we have seconds
 
         #get server timezone offset
         server_zone_offset = Time.zone_offset(Time.now.zone)
