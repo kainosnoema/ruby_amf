@@ -58,7 +58,6 @@ begin
       module BinaryReader
         include ByteOrder
         
-        #read N length from stream starting at position
         def readn(length)
           self.stream_position ||= 0
           str = self.stream[self.stream_position, length]
@@ -77,7 +76,6 @@ begin
           end
         end
     
-        #8bits no byte order
         def read_int8
           readn(1).unpack('c').first
         end
@@ -130,7 +128,6 @@ begin
           @stream << val
         end
     
-        #8 bit no byteorder
         def write_word8(val)
          writen [val].pack('C')
         end
@@ -162,7 +159,7 @@ begin
     
         # write utility methods
         def write_boolean(val)
-          if val then self.write_byte(1) else self.write_byte(0) end
+          self.write_byte(val ? 1 : 0)
         end
 
         def write_utf(str)
