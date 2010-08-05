@@ -138,7 +138,7 @@ begin
         def write_int8(val)
           writen [val].pack('c')
         end
-        alias :write_byte, :write_int8
+        alias :write_byte :write_int8
     
         def write_word16(val)
           str = [val].pack('S')
