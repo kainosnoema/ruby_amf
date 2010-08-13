@@ -12,7 +12,8 @@ module RubyAMF
                             :@marked_for_destruction,
                             :@destroyed,
                             :@previously_changed,
-                            :@changed_attributes
+                            :@changed_attributes,
+                            :@default_current_state
                             ]
       
       def self.get_ruby_class(action_class_name)
