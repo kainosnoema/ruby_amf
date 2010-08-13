@@ -13,7 +13,10 @@ module RubyAMF
                             :@destroyed,
                             :@previously_changed,
                             :@changed_attributes,
-                            :@default_current_state
+                            :@new_record_before_save,
+                            :@default_current_state,
+                            :@_on_validate,
+                            :@errors
                             ]
       
       def self.get_ruby_class(action_class_name)
