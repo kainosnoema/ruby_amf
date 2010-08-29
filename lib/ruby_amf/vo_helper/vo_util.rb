@@ -115,7 +115,7 @@ module RubyAMF
       #moved logic here so AMF3 and AMF0 can use it
       def self.get_vo_for_incoming(obj,action_class_name)
         ruby_obj = VoUtil.get_ruby_class(action_class_name).new
-        if ruby_obj.kind_of?(ActiveRecord::Base) 
+        if ruby_obj.kind_of?(ActiveRecord::Base)
           obj.each_pair{|key, value| VoUtil.set_value(ruby_obj, key, value)}
           VoUtil.finalize_object(ruby_obj)
           return ruby_obj

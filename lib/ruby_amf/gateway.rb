@@ -119,7 +119,7 @@ module RubyAMF
           begin
             service_object = class_name.constantize.new #handle on service
           rescue Exception => e
-            raise RUBYAMFException.new(RUBYAMFException.UNDEFINED_OBJECT_REFERENCE_ERROR, "There was an error loading the service class #{class_name}")
+            raise RUBYAMFException.new(RUBYAMFException.UNDEFINED_OBJECT_REFERENCE_ERROR, "There was an error loading the service class #{class_name}:")
           end
           
           if service_object.private_methods.any? { |m| m.to_s == method_name }
