@@ -1,0 +1,136 @@
+module RubyAMF
+  module Messages #:nodoc:
+    # Base class for all special AS3 response messages. Maps to
+    # <tt>flex.messaging.messages.AbstractMessage</tt>.
+    class AbstractMessage
+      attr_accessor :clientId
+      attr_accessor :destination
+      attr_accessor :messageId
+      attr_accessor :timestamp
+      attr_accessor :timeToLive
+      attr_accessor :headers
+      attr_accessor :body
+
+      protected
+        def rand_uuid
+          [8,4,4,4,12].map {|n| rand_hex_3(n)}.join('-').to_s
+        end
+
+        def rand_hex_3(l)
+          "%0#{l}x" % rand(1 << l*4)
+        end
+    end
+
+    # Maps to <tt>flex.messaging.messages.RemotingMessage</tt>
+    class RemotingMessage < AbstractMessage
+      attr_accessor :source # The name of the service to be called including package name
+      attr_accessor :operation # The name of the method to be called
+      attr_accessor :parameters # The arguments to call the method with
+
+      def initialize
+        @clientId = rand_uuid
+        @destination = nil
+        @messageId = rand_uuid
+        @timestamp = Time.new.to_i*100
+        @timeToLive = 0
+        @headers = {}
+        @body = nil
+      end
+    end
+
+    # Maps to <tt>flex.messaging.messages.AsyncMessage</tt>
+    class AsyncMessage < AbstractMessage
+      attr_accessor :correlationId
+    end
+
+    # Maps to <tt>flex.messaging.messages.CommandMessage</tt>
+    class CommandMessage < AsyncMessage
+      SUBSCRIBE_OPERATION = 0
+      UNSUSBSCRIBE_OPERATION = 1
+      POLL_OPERATION = 2
+      CLIENT_SYNC_OPERATION = 4
+      CLIENT_PING_OPERATION = 5
+      CLUSTER_REQUEST_OPERATION = 7
+      LOGIN_OPERATION = 8
+      LOGOUT_OPERATION = 9
+      SESSION_INVALIDATE_OPERATION = 10
+      MULTI_SUBSCRIBE_OPERATION = 11
+      DISCONNECT_OPERATION = 12
+      UNKNOWN_OPERATION = 10000
+
+      attr_accessor :operation
+
+      def initialize
+        @operation = UNKNOWN_OPERATION
+      end
+    end
+
+    # Maps to <tt>flex.messaging.messages.AcknowledgeMessage</tt>
+    class AcknowledgeMessage < AsyncMessage
+      def initialize message=nil
+        @clientId = rand_uuid
+        @destination = nil
+        @messageId = rand_uuid
+        @timestamp = Time.new.to_i*100
+        @timeToLive = 0
+        @headers = {}
+        @body = nil
+
+        if message.is_a?(AbstractMessage)
+          @correlationId = message.messageId
+        end
+      end
+    end
+
+    # Maps to <tt>flex.messaging.messages.ErrorMessage</tt> in AMF3 mode
+    class ErrorMessage < AcknowledgeMessage
+      # Extended data that will facilitate custom error processing on the client
+      attr_accessor :extendedData      
+      attr_accessor :faultCode # The fault code for the error, defaults to class name
+      attr_accessor :faultDetail # Detailed description of what caused the error
+      attr_accessor :faultString # A simple description of the error
+      attr_accessor :rootCause # Optional "root cause" of the error
+ 
+      def initialize message=nil, exception=nil
+        super message
+
+        unless exception.nil?
+          @e = exception
+          @faultCode = @e.class.name
+          @faultDetail = @e.backtrace.join("\n")
+          @faultString = @e.message
+        end
+      end
+
+      def to_amf serializer
+        stream = ""
+        if serializer.version == 0
+          data = {
+            :faultCode => @faultCode,
+            :faultDetail => @faultDetail,
+            :faultString => @faultString
+          }
+          serializer.write_hash(data, stream)
+        else
+          serializer.write_object(self, stream)
+        end
+        stream
+      end
+    end
+    
+    #This is a helper to return FaultObjects. Often times there are sitiuations with database logic that requires an "error state"
+    #to be set in Flash / Flex, but returning false isn't the best because it still get's mapped to the onResult handler, even returning a 
+    #generic object with some specific keys set, such as ({error:'someError', code:3}). That is still a pain because it gets mapped to
+    #the onResult function still. So return one of these objects to RubyAMF and it will auto generate a faultObject to return to flash
+    #so that it maps correctly to the onFault handler.
+    class FaultObject < Hash
+      def initialize(message = '', payload=nil)
+        self['faultCode'] = 1
+        self['code'] = 1
+        self['message'] = message
+        self['faultString'] = message
+        self['payload'] = payload
+      end
+    end
+  end
+end
