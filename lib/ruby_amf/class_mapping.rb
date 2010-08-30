@@ -34,7 +34,7 @@ module RubyAMF
       end
       
       def ruby_object_for(as_class_name)
-        ruby_class_name = mappings.ruby_class_name_for(as_class_name)
+        ruby_class_name = ruby_class_name_for(as_class_name)
         if ruby_class_name.nil?
           return TypedHash.new(as_class_name)  # Populate a simple hash, since no mapping
         else
@@ -64,9 +64,13 @@ module RubyAMF
           as_class_name = ruby_obj._explicit_type
         else
           ruby_class_name = ruby_obj.is_a?(String) ? ruby_obj : ruby_obj.class.name
-          as_class_name = mappings.as_class_name_for(ruby_class_name) || ruby_class_name
+          as_class_name = mappings.as_class_name_for(ruby_class_name)
         end
         as_class_name
+      end
+      
+      def as_traits_for(ruby_obj)
+        {:class_name => as_class_name_for(ruby_obj), :members => [], :externalizable => false, :dynamic => true}
       end
       
       def as_properties_for(ruby_obj)
@@ -125,21 +129,23 @@ module RubyAMF
       end
 
       def as_class_name_for(value)
-        ruby_class_name = value.to_s
-        unless as_class_name = @ruby_mappings[ruby_class_name]
-          as_class_name = [@actionscript_namespace, ruby_class_name].reject(&:blank?).join('.')
-          @actionscript_mappings[as_class_name] ||= ruby_class_name
-          @ruby_mappings[ruby_class_name] ||= as_class_name
-        end
+        as_class_name = @ruby_mappings[value.to_s]
+        # we don't want to assume actionscript types, no way to know if it will succeed
         as_class_name
       end
 
       def ruby_class_name_for(value)
         as_class_name = value.to_s
         unless (ruby_class_name = @actionscript_mappings[as_class_name]) || actionscript_namespace.nil?
-          ruby_class_name = class_name.sub("#{actionscript_namespace}.", "")
-          @ruby_mappings[ruby_class_name] ||= as_class_name
-          @actionscript_mappings[as_class_name] ||= ruby_class_name
+          begin 
+            assumed_ruby_class = as_class_name.sub("#{actionscript_namespace}.", "").constantize
+            assumed_ruby_class.new
+            ruby_class_name = assumed_ruby_class
+            @ruby_mappings[ruby_class_name] ||= as_class_name
+            @actionscript_mappings[as_class_name] ||= ruby_class_name
+          rescue
+            # if assumed_ruby_class doesn't work, we don't want to save the mapping
+          end
         end
         ruby_class_name
       end

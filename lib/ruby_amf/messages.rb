@@ -45,18 +45,18 @@ module RubyAMF
 
     # Maps to <tt>flex.messaging.messages.CommandMessage</tt>
     class CommandMessage < AsyncMessage
-      SUBSCRIBE_OPERATION = 0
-      UNSUSBSCRIBE_OPERATION = 1
-      POLL_OPERATION = 2
-      CLIENT_SYNC_OPERATION = 4
-      CLIENT_PING_OPERATION = 5
-      CLUSTER_REQUEST_OPERATION = 7
-      LOGIN_OPERATION = 8
-      LOGOUT_OPERATION = 9
-      SESSION_INVALIDATE_OPERATION = 10
-      MULTI_SUBSCRIBE_OPERATION = 11
-      DISCONNECT_OPERATION = 12
-      UNKNOWN_OPERATION = 10000
+      SUBSCRIBE_OPERATION           = 0
+      UNSUSBSCRIBE_OPERATION        = 1
+      POLL_OPERATION                = 2
+      CLIENT_SYNC_OPERATION         = 4
+      CLIENT_PING_OPERATION         = 5
+      CLUSTER_REQUEST_OPERATION     = 7
+      LOGIN_OPERATION               = 8
+      LOGOUT_OPERATION              = 9
+      SESSION_INVALIDATE_OPERATION  = 10
+      MULTI_SUBSCRIBE_OPERATION     = 11
+      DISCONNECT_OPERATION          = 12
+      UNKNOWN_OPERATION             = 10000
 
       attr_accessor :operation
 
@@ -67,7 +67,7 @@ module RubyAMF
 
     # Maps to <tt>flex.messaging.messages.AcknowledgeMessage</tt>
     class AcknowledgeMessage < AsyncMessage
-      def initialize message=nil
+      def initialize(message = nil)
         @clientId = rand_uuid
         @destination = nil
         @messageId = rand_uuid
@@ -91,7 +91,7 @@ module RubyAMF
       attr_accessor :faultString # A simple description of the error
       attr_accessor :rootCause # Optional "root cause" of the error
  
-      def initialize message=nil, exception=nil
+      def initialize(message = nil, exception = nil)
         super message
 
         unless exception.nil?

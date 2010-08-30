@@ -9,19 +9,7 @@
 amf_cache_t* amf_cache_new(void)
 {
   amf_cache_t * amf_cache = malloc(sizeof(amf_cache_t));
-  
-  // delay hash allocation for performance
-  amf_cache->strings       = Qnil;
-  amf_cache->strings_index = 0;
-  amf_cache->objects       = Qnil;
-  amf_cache->objects_index = 0;
-  amf_cache->traits        = Qnil;
-  amf_cache->traits_index  = 0;
-  
-  // AMF0 only
-  amf_cache->refs        = Qnil;
-  amf_cache->refs_index  = 0;
-  
+  amf_cache_reset(amf_cache); // allocates and registers hashes with gc
   return amf_cache;
 }
 
@@ -30,45 +18,34 @@ inline int amf_cache_free(amf_cache_t* cache) {
     {
         return 1;
     }
-    rb_gc_unregister_address(&cache->objects);
     rb_gc_unregister_address(&cache->strings);
+    rb_gc_unregister_address(&cache->objects);
     rb_gc_unregister_address(&cache->traits);
     rb_gc_unregister_address(&cache->refs);
     free(cache);
     return 0;
 }
 
-inline void amf_cache_init_objects(amf_cache_t* cache)
-{
-  if(cache->objects == Qnil)
-  {
-    cache->objects = rb_hash_new();
-    rb_gc_register_address(&cache->objects); // prevents garbage collection
-  }
-}
+inline void amf_cache_reset(amf_cache_t* cache) {
+  rb_gc_unregister_address(&cache->strings);
+  cache->strings = rb_hash_new();
+  rb_gc_register_address(&cache->strings);
+  cache->strings_index = 0;
 
-inline void amf_cache_init_strings(amf_cache_t* cache)
-{
-  if(cache->strings == Qnil) {
-    cache->strings = rb_hash_new();
-    rb_gc_register_address(&cache->strings);
-  }
-}
+  rb_gc_unregister_address(&cache->objects);
+  cache->objects = rb_hash_new();
+  rb_gc_register_address(&cache->objects);
+  cache->objects_index = 0;
 
-inline void amf_cache_init_traits(amf_cache_t* cache)
-{
-  if(cache->traits == Qnil) {
-    cache->traits = rb_hash_new();
-    rb_gc_register_address(&cache->traits);
-  }
-}
+  rb_gc_unregister_address(&cache->traits);
+  cache->traits = rb_hash_new();
+  rb_gc_register_address(&cache->traits);
+  cache->traits_index = 0;
 
-inline void amf_cache_init_refs(amf_cache_t* cache)
-{
-  if(cache->refs == Qnil) {
-    cache->refs = rb_hash_new();
-    rb_gc_register_address(&cache->refs);
-  }
+  rb_gc_unregister_address(&cache->refs);
+  cache->refs = rb_hash_new();
+  rb_gc_register_address(&cache->refs);
+  cache->refs_index = 0;
 }
 
 /*
@@ -77,30 +54,35 @@ inline void amf_cache_init_refs(amf_cache_t* cache)
 
 inline void amf_cache_add_objref(amf_cache_t* cache, VALUE obj)
 {
-  amf_cache_init_objects(cache);
   rb_hash_aset(cache->objects, rb_obj_id(obj), cache->objects_index);
   cache->objects_index++;
 }
 
 inline VALUE amf_cache_get_objref(amf_cache_t* cache, VALUE obj)
 {
-  if(cache->objects == Qnil)
-    return Qnil; // no need to check
   return rb_hash_aref(cache->objects, rb_obj_id(obj));
 }
 
 inline void amf_cache_add_stringref(amf_cache_t* cache, VALUE obj)
 {
-  amf_cache_init_strings(cache);
   rb_hash_aset(cache->strings, obj, cache->strings_index);
   cache->strings_index++;
 }
 
 inline VALUE amf_cache_get_stringref(amf_cache_t* cache, VALUE obj)
 {
-  if(cache->strings == Qnil)
-    return Qnil; // no need to check
   return rb_hash_aref(cache->strings, obj);
+}
+
+inline void amf_cache_add_traitref(amf_cache_t* cache, VALUE obj)
+{
+  rb_hash_aset(cache->traits, obj, cache->traits_index);
+  cache->traits_index++;
+}
+
+inline VALUE amf_cache_get_traitref(amf_cache_t* cache, VALUE obj)
+{
+  return rb_hash_aref(cache->traits, obj);
 }
 
 /*
@@ -109,44 +91,36 @@ inline VALUE amf_cache_get_stringref(amf_cache_t* cache, VALUE obj)
 
 inline void amf_cache_add_obj(amf_cache_t* cache, VALUE obj)
 {
-  amf_cache_init_objects(cache);
-  rb_hash_aset(cache->objects, cache->objects_index, obj);
+  rb_hash_aset(cache->objects, LONG2FIX(cache->objects_index), obj);
   cache->objects_index++;
 }
 
-inline VALUE amf_cache_get_obj(amf_cache_t* cache, VALUE ref)
+inline VALUE amf_cache_get_obj(amf_cache_t* cache, int32_t ref)
 {
-  if(cache->objects == Qnil)
-    return Qnil; // no need to check
-  return rb_hash_aref(cache->objects, ref);
+  return rb_hash_aref(cache->objects, LONG2FIX(ref));
 }
 
 inline void amf_cache_add_string(amf_cache_t* cache, VALUE obj)
 {
-  amf_cache_init_strings(cache);
-  rb_hash_aset(cache->strings, cache->strings_index, obj);
+  rb_hash_aset(cache->strings, LONG2FIX(cache->strings_index), obj);
   cache->strings_index++;
+
 }
 
-inline VALUE amf_cache_get_string(amf_cache_t* cache, VALUE ref)
+inline VALUE amf_cache_get_string(amf_cache_t* cache, int32_t ref)
 {
-  if(cache->strings == Qnil)
-    return Qnil; // no need to check
-  return rb_hash_aref(cache->strings, ref);
+  return rb_hash_aref(cache->strings, LONG2FIX(ref));
 }
 
 inline void amf_cache_add_trait(amf_cache_t* cache, VALUE obj)
 {
-  amf_cache_init_traits(cache);
-  rb_hash_aset(cache->traits, cache->traits_index, obj);
+  rb_hash_aset(cache->traits, LONG2FIX(cache->traits_index), obj);
   cache->traits_index++;
 }
 
-inline VALUE amf_cache_get_trait(amf_cache_t* cache, VALUE ref)
+inline VALUE amf_cache_get_trait(amf_cache_t* cache, int32_t ref)
 {
-  if(cache->objects == Qnil)
-    return Qnil; // no need to check
-  return rb_hash_aref(cache->traits, ref);
+  return rb_hash_aref(cache->traits, LONG2FIX(ref));
 }
 
 /*
@@ -155,14 +129,11 @@ inline VALUE amf_cache_get_trait(amf_cache_t* cache, VALUE ref)
  
 inline void amf_cache_add_amf0obj(amf_cache_t* cache, VALUE obj)
 {
-  amf_cache_init_refs(cache);
-  rb_hash_aset(cache->refs, cache->objects_index, obj);
+  rb_hash_aset(cache->refs, LONG2FIX(cache->objects_index), obj);
   cache->objects_index++;
 }
 
 inline VALUE amf_cache_get_amf0obj(amf_cache_t* cache, VALUE ref)
 {
-  if(cache->refs == Qnil)
-   return Qnil; // no need to check
-  return rb_hash_aref(cache->refs, ref);
+  return rb_hash_aref(cache->refs, LONG2FIX(ref));
 }

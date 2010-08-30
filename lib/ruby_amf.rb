@@ -4,12 +4,12 @@ $:.unshift File.dirname(__FILE__)
 # core, must be loaded in this order
 require 'ruby_amf/typed_hash'
 require 'ruby_amf/messages'
-require 'ruby_amf/remoting'
 require 'ruby_amf/class_mapping'
+require 'ruby_amf/remoting'
 require 'ruby_amf/gateway'
+require 'ruby_amf/action_controller'
 
-# native C IO extension
+# native C IO extension, defines
+# some methods in RubyAMF::Remoting
 require 'ruby_amf_ext'
 
-# helpers for errors and rendering
-require 'ruby_amf/lib/action_controller'
