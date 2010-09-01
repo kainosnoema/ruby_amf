@@ -9,8 +9,8 @@
 #include "AMFCache.h"
 
 VALUE rb_cRubyAMF_Remoting_Envelope = Qnil;
-VALUE rb_cRubyAMF_Remoting_Header = Qnil;
-VALUE rb_cRubyAMF_Remoting_Body = Qnil;
+VALUE rb_cRubyAMF_Remoting_Envelope_Header = Qnil;
+VALUE rb_cRubyAMF_Remoting_Envelope_Body = Qnil;
 
 static VALUE t_deserialize(VALUE self, VALUE string);
 static VALUE t_serialize(VALUE self);
@@ -36,7 +36,7 @@ VALUE rb_read_amf_request(VALUE envelope, load_context_t* context)
     
     VALUE data = rb_read_message_data(context);
     
-    rb_ary_push(headers, rb_funcall(rb_cRubyAMF_Remoting_Header, rb_intern("new"), 3, name, must_understand, data));
+    rb_ary_push(headers, rb_funcall(rb_cRubyAMF_Remoting_Envelope_Header, rb_intern("new"), 3, name, must_understand, data));
   }
   
   VALUE bodies = rb_ary_new();
@@ -47,7 +47,7 @@ VALUE rb_read_amf_request(VALUE envelope, load_context_t* context)
     
     VALUE data = rb_read_message_data(context);
     
-    rb_ary_push(bodies, rb_funcall(rb_cRubyAMF_Remoting_Body, rb_intern("new"), 3, target_uri, response_uri, data));
+    rb_ary_push(bodies, rb_funcall(rb_cRubyAMF_Remoting_Envelope_Body, rb_intern("new"), 3, target_uri, response_uri, data));
   }
   
   rb_iv_set(envelope, "@amf_version", amf_version);
@@ -59,7 +59,7 @@ VALUE rb_read_amf_request(VALUE envelope, load_context_t* context)
 
 static VALUE t_deserialize(VALUE self, VALUE string)
 {
-  if(!rb_instance_of(self, rb_cRubyAMF_Remoting_Envelope))
+  if(!rb_is_a(self, rb_cRubyAMF_Remoting_Envelope))
   {
     rb_raise(rb_eRuntimeError, "RubyAMF::Ext::AMFRemoting.deserialize() can only be \
                                 called on a RubyAMF::Remoting::Envelope.");
@@ -110,7 +110,7 @@ void write_amf_request(buffer_t* buffer, VALUE envelope)
 
 static VALUE t_serialize(VALUE self)
 {
-  if(!rb_instance_of(self, rb_cRubyAMF_Remoting_Envelope))
+  if(!rb_is_a(self, rb_cRubyAMF_Remoting_Envelope))
   {
     rb_raise(rb_eRuntimeError, "RubyAMF::Ext::AMFRemoting.serialize() can only be \
                                 called on a RubyAMF::Remoting::Envelope.");
@@ -124,8 +124,8 @@ static VALUE t_serialize(VALUE self)
 void Init_AMFRemoting() {
   VALUE rb_mRubyAMF_Remoting = rb_const_get(rb_mRubyAMF, rb_intern("Remoting"));
   rb_cRubyAMF_Remoting_Envelope = rb_const_get(rb_mRubyAMF_Remoting, rb_intern("Envelope"));
-  rb_cRubyAMF_Remoting_Header = rb_const_get(rb_mRubyAMF_Remoting, rb_intern("Header"));
-  rb_cRubyAMF_Remoting_Body = rb_const_get(rb_mRubyAMF_Remoting, rb_intern("Body"));
+  rb_cRubyAMF_Remoting_Envelope_Header = rb_const_get(rb_cRubyAMF_Remoting_Envelope, rb_intern("Header"));
+  rb_cRubyAMF_Remoting_Envelope_Body = rb_const_get(rb_cRubyAMF_Remoting_Envelope, rb_intern("Body"));
   
   rb_define_method(rb_cRubyAMF_Remoting_Envelope, "deserialize", t_deserialize, 1);
   rb_define_method(rb_cRubyAMF_Remoting_Envelope, "serialize", t_serialize, 0);
