@@ -209,13 +209,14 @@ module RubyAMF
             write_amf3_integer(reference)
           end
         else
+          string = string.encode("UTF-8") if (string.encoding.name != 'UTF-8' || string.frozen?)
           @stored_strings[string] = @current_strings_index
           @current_strings_index += 1 # increment the index
-          reference = string.length
+          reference = string.bytesize
           reference = reference << 1
           reference = reference | 1
           write_amf3_integer(reference)
-          writen(string)
+          writen(string.force_encoding('ASCII-8BIT'))
         end
       end
     
