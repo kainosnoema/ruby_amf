@@ -80,10 +80,11 @@ module RubyAMF
         attr_accessor :PARAMETER_MAPPING_ERROR
       end
   
-      def initialize(type,msg)
+      def initialize(type, msg, backtrace = nil)
         super(msg)
         @message = msg
         @etype = type
+        @ebacktrace = backtrace.is_a?(Array) ? backtrace.take(20).join("\n") : backtrace.to_s
       end
   
       # stringify the message

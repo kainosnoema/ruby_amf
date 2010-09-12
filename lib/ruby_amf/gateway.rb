@@ -42,14 +42,12 @@ module RubyAMF
             
             begin #this is where any RubyAMF exception during service call gets transformed into a relevant AMF0/AMF3 faultObject
               self.invoke_service_call(amfbody)
-              
+            
             rescue RUBYAMFException => ramfe
-              ramfe.ebacktrace = ramfe.backtrace.to_s
               ExceptionHandler::HandleException(ramfe, amfbody)
               
             rescue Exception => e
-              ramfe = RUBYAMFException.new(e.class.to_s, e.message.to_s)
-              ramfe.ebacktrace = e.backtrace.to_s
+              ramfe = RUBYAMFException.new(e.class.to_s, e.message.to_s, e.backtrace)
               ExceptionHandler::HandleException(ramfe, amfbody)
             end
           end

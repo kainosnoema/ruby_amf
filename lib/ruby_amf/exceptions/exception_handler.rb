@@ -7,7 +7,7 @@ module RubyAMF
   
       def ExceptionHandler.HandleException(e, body)
         Rails.logger.error e.message
-        Rails.logger.error e.backtrace.join("\n")
+        Rails.logger.error e.ebacktrace
         
         if body.amf_encoding == 'amf3'
           body.results = AS3Fault.new(e)
