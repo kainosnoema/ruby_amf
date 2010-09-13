@@ -42,7 +42,7 @@ module RubyAMF
             
             begin #this is where any RubyAMF exception during service call gets transformed into a relevant AMF0/AMF3 faultObject
               self.invoke_service_call(amfbody)
-            
+              
             rescue RUBYAMFException => ramfe
               ExceptionHandler::HandleException(ramfe, amfbody)
               
@@ -51,9 +51,18 @@ module RubyAMF
               ExceptionHandler::HandleException(ramfe, amfbody)
             end
           end
-          self.response = build_amf_response(amfobj)
           
-          self.response
+          # serialization errors should return server error - no way to rescue to amf
+          begin
+            amfobj.serialize!
+            self.response = self.gzip ? Zlib::Deflate.deflate(amfobj.output_stream) : amfobj.output_stream
+          rescue Exception => e
+            Rails.logger.error e.message
+            Rails.logger.error e.backtrace.take(20).join("\n")
+            return [500, {"Content-Type" => "application/x-amf"}, nil]
+          end
+          
+          [200, {"Content-Type" => "application/x-amf"}, self.response]
         end
       end
 
@@ -141,13 +150,6 @@ module RubyAMF
           service_request.env['HTTP_ACCEPT']        = 'application/x-amf'
           
           service_request
-        end
-      
-        def build_amf_response(amfobj)
-          amfobj.serialize!
-          amf_response = self.gzip ? Zlib::Deflate.deflate(amfobj.output_stream) : amfobj.output_stream
-          
-          [200, {"Content-Type" => "application/x-amf"}, amf_response]
         end
       
         def html_response
