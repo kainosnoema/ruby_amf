@@ -163,10 +163,10 @@ begin
         end
 
         def write_utf(str)
-          str = str.encode("UTF-8") if (str.respond_to?(:encode) && (str.encoding.name != 'UTF-8' || str.frozen?))
           if str.bytesize > 2**16-1
             write_long_utf(str)
           else
+            str = str.encode("UTF-8") if (str.respond_to?(:encode) && (str.encoding.name != 'UTF-8' || str.frozen?))
             write_int16(str.bytesize)
             writen str.force_encoding("ASCII-8BIT")
           end
