@@ -28,7 +28,7 @@ inline u_char peek_byte(load_context_t* context);
 
 inline u_char read_byte(load_context_t* context);
 
-inline u_char* read_bytes(load_context_t* context, int len);
+inline u_char* read_bytes(load_context_t* context, uint32_t len);
 
 /**
  *    Binary read functions

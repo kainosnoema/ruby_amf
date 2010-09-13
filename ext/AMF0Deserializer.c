@@ -24,13 +24,13 @@ VALUE rb_read_amf0_number(load_context_t* context)
 VALUE rb_read_utf_string(load_context_t* context)
 {
   uint16_t len = (uint16_t)c_read_word16_network(context);
-  return rb_str_new((char*)read_bytes(context, (size_t)len), len);
+  return rb_str_new((char*)read_bytes(context, (uint32_t)len), len);
 }
 
 VALUE rb_read_utf_long_string(load_context_t* context)
 {
   uint32_t len = (uint32_t)c_read_word32_network(context);
-  return rb_str_new((char*)read_bytes(context, (size_t)len), len);
+  return rb_str_new((char*)read_bytes(context, (uint32_t)len), len);
 }
 
 VALUE rb_read_amf0_reference(load_context_t* context)

@@ -20,7 +20,7 @@ inline buffer_t * buffer_new(void);
 inline VALUE buffer_to_rstring(buffer_t* buffer);
 
 
-inline int write_bytes(buffer_t* buffer, const u_char * bytes, u_int size);
+inline int write_bytes(buffer_t* buffer, const u_char * bytes, uint32_t len);
 
 inline void write_byte(buffer_t* buffer, const u_char * byte);
 

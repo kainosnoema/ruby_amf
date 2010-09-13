@@ -34,7 +34,8 @@ VALUE rb_datetime_new(long seconds)
 
 u_int rb_is_a(VALUE obj, VALUE klass)
 {
-  return rb_obj_is_kind_of(obj, klass) == Qtrue;
+  // need to use functions for classes that override this method
+  return rb_funcall(obj, rb_intern("is_a?"), 1, klass) == Qtrue;
 }
 
 u_int rb_instance_of(VALUE obj, VALUE klass)

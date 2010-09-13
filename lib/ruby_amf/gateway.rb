@@ -2,57 +2,36 @@ require 'zlib'
 require 'benchmark'
 module RubyAMF
   class Gateway
-    include RubyAMF::Remoting
-    
-    @@service_path = File.expand_path(Rails.root) + '/app/controllers'
-    cattr_accessor  :env,
-                    :gzip,
-                    :request
-    
     class << self
       
-      # valid Rack application
       def call(env)
-        self.env = env
-        self.gzip = env['ACCEPT_ENCODING'].to_s.match(/gzip,[\s]{0,1}deflate/)
-        self.request = ActionDispatch::Request.new(env)
+        @use_gzip = env['ACCEPT_ENCODING'].to_s.match(/gzip,[\s]{0,1}deflate/)
+        @request = ActionDispatch::Request.new(env)
 
-        if self.request.content_type != "application/x-amf"
-          return self.html_response
+        if @request.content_type != Remoting::AMF_MIME_TYPE
+          return html_response
         else
           begin
-            
-            amf_request = RubyAMF::Remoting::Request.new(self.request)
+            amf_request = Remoting::Request.new(@request)
             
             # handle each method call in the request and build the response
-            amf_response = amf_request.each_method_call do |method_call|
-              # can get these directly and process manually:
-              #     target_uri = method_call.target_uri
-              #     params = method_call.params
-              
-              # or we can find and initialize the service automatically:
-              service = method_call.find_service
-              service.controller.process_as_amf(service.action)
-              return service.controller.rendered_amf
-            end
-            
-            Rails.logger.warn amf_response.inspect
-            
-            response_str = if self.gzip
-              Zlib::Deflate.deflate(amf_response.serialize)
-            else
-              amf_response.serialize
+            amf_response = amf_request.each_message do |msg|
+              Remoting::Service.new(msg, @request).process # calls action and returns result
             end
 
+            Rails.logger.warn "serializing"
+            
+            response_str = @use_gzip ? Zlib::Deflate.deflate(amf_response.serialize) : amf_response.serialize
+            
           rescue Exception => e
             Rails.logger.warn e.message.to_s
-            Rails.logger.warn e.backtrace.take(5).join("\n")
+            Rails.logger.warn e.backtrace.take(10).join("\n")
           end
-                  
-          return [200, {"Content-Type" => "application/x-amf"}, response_str]
+          
+          return [200, {"Content-Type" => Remoting::AMF_MIME_TYPE}, response_str]
         end
       end
-
+      
       protected
       
         def html_response

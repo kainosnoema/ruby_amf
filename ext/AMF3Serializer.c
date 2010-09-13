@@ -31,9 +31,24 @@ void write_c_integer(buffer_t* buffer, int32_t i)
   }
 }
 
-void write_amf3_reference(buffer_t* buffer, int32_t i)
+void write_amf3_reference(buffer_t* buffer, uint32_t i)
 {
   write_c_integer(buffer, i << 1);
+}
+
+int write_objref_if_exists(buffer_t* buffer, VALUE rval)
+{
+  VALUE ref = (uint32_t)amf_cache_get_objref(buffer->amf_cache, rval);
+  if(ref != Qnil)
+  {
+    write_amf3_reference(buffer, (uint32_t)ref);
+    return 1;
+  }
+  else
+  {
+    amf_cache_add_objref(buffer->amf_cache, rval);
+    return 0;
+  }
 }
 
 void write_amf3_string(buffer_t* buffer, VALUE rval)
@@ -43,63 +58,56 @@ void write_amf3_string(buffer_t* buffer, VALUE rval)
     return;
   }
   
-  int32_t ref = amf_cache_get_stringref(buffer->amf_cache, rval);
+  VALUE ref = amf_cache_get_stringref(buffer->amf_cache, rval);
   if(ref != Qnil)
-    write_amf3_reference(buffer, ref);
+    write_amf3_reference(buffer, (uint32_t)ref);
   else
   {
     amf_cache_add_stringref(buffer->amf_cache, rval);
     
-    int32_t len = RSTRING_LEN(rval);
-    int32_t header = len << 1 | 1;
+    uint32_t len = (uint32_t)RSTRING_LEN(rval);
+    uint32_t header = len << 1 | 1;
     write_c_integer(buffer, header);
     write_bytes(buffer, (u_char *)RSTRING_PTR(rval), len);
   }
 }
 
+void write_amf3_time(buffer_t* buffer, VALUE rval)
+{
+  if(write_objref_if_exists(buffer, rval))
+    return;
+    
+  rval = rb_funcall(rval, rb_intern("getutc"), 0);
+  double milleseconds = NUM2DBL(rb_funcall(rval, rb_intern("to_f"), 0)) * 1000;
+  
+  write_c_int8(buffer, AMF3_NULL);
+  write_c_double(buffer, trunc(milleseconds + 0.5));
+}
+
 void write_amf3_date(buffer_t* buffer, VALUE rval)
 {
-  int32_t ref = amf_cache_get_objref(buffer->amf_cache, rval);
-  if(ref != Qnil)
-    write_amf3_reference(buffer, ref);
-  else
-  {
-    amf_cache_add_objref(buffer->amf_cache, rval);
+  if(write_objref_if_exists(buffer, rval))
+    return;
     
-    double milleseconds;
-    if(rb_class_of(rval) == rb_cDate)
-    {
-      rval = rb_funcall(rval, rb_intern("strftime"), 1, rb_str_new2("%s"));
-      milleseconds = NUM2DBL(rb_funcall(rval, rb_intern("to_i"), 0)) * 1000;
-    }
-    else
-    {
-      rb_funcall(rval, rb_intern("utc"), 0);
-      milleseconds = NUM2DBL(rb_funcall(rval, rb_intern("to_f"), 0)) * 1000;
-    }
-    
-    write_c_int8(buffer, AMF3_NULL);
-    write_c_double(buffer, trunc(milleseconds + 0.5));
-  }
+  rval = rb_funcall(rval, rb_intern("strftime"), 1, rb_str_new2("%s"));
+  double milleseconds = NUM2DBL(rb_funcall(rval, rb_intern("to_i"), 0)) * 1000;
+  
+  write_c_int8(buffer, AMF3_NULL);
+  write_c_double(buffer, trunc(milleseconds + 0.5));
 }
 
 void write_amf3_array(buffer_t* buffer, VALUE rval)
 {
-  int32_t ref = amf_cache_get_objref(buffer->amf_cache, rval);
-  if(ref != Qnil)
-    write_amf3_reference(buffer, ref);
-  else
-  {
-    amf_cache_add_objref(buffer->amf_cache, rval);
+  if(write_objref_if_exists(buffer, rval))
+    return;
     
-    int32_t len = RARRAY_LEN(rval);
-    int32_t header = len << 1 | 1;
-    write_c_integer(buffer, header);
-    write_c_int8(buffer, AMF3_CLOSE_DYNAMIC_ARRAY);
-    int32_t i = 0;
-    for (;i<len;i++) {
-      write_amf3(buffer, RARRAY_PTR(rval)[i]);
-    }
+  uint32_t len = (uint32_t)RARRAY_LEN(rval);
+  uint32_t header = len << 1 | 1;
+  write_c_integer(buffer, header);
+  write_c_int8(buffer, AMF3_CLOSE_DYNAMIC_ARRAY);
+  uint32_t i = 0;
+  for (;i<len;i++) {
+    write_amf3(buffer, RARRAY_PTR(rval)[i]);
   }
 }
 
@@ -108,10 +116,13 @@ VALUE write_amf3_hash_pair(VALUE values, buffer_t * buffer, int argc, VALUE *arg
   VALUE key = RARRAY_PTR(values)[0];
   VALUE value = RARRAY_PTR(values)[1];
   
-  if(TYPE(key) == T_SYMBOL)
-    key = rb_str_new2(rb_id2name(SYM2ID(key)));
+  VALUE attr = Qnil;
+  if(TYPE(key) == T_STRING)
+    attr = key;
+  else if(TYPE(key) == T_SYMBOL)
+    attr = rb_str_new2(rb_id2name(SYM2ID(key)));
   
-  write_amf3_string(buffer, key);
+  write_amf3_string(buffer, attr);
   write_amf3(buffer, value);
 
   return Qnil;
@@ -119,80 +130,31 @@ VALUE write_amf3_hash_pair(VALUE values, buffer_t * buffer, int argc, VALUE *arg
 
 void write_amf3_object(buffer_t* buffer, VALUE rval)
 {
-  int32_t ref = amf_cache_get_objref(buffer->amf_cache, rval);
-  if(ref != Qnil)
-    write_amf3_reference(buffer, ref);
-  else
-  {
-    amf_cache_add_objref(buffer->amf_cache, rval);
+  if(write_objref_if_exists(buffer, rval))
+    return;
 
-    VALUE traits             = rb_funcall(rb_cRubyAMF_ClassMapping, rb_intern("as_traits_for"), 1, rval);
-    rb_gc_register_address(&traits);
-    
-    VALUE class_name         = rb_hash_aref(traits, ID2SYM(rb_intern("class_name")));
-    VALUE members            = rb_hash_aref(traits, ID2SYM(rb_intern("members")));
-    uint8_t externalizable   = rb_hash_aref(traits, ID2SYM(rb_intern("externalizable"))) == Qtrue;
-    uint8_t dynamic          = rb_hash_aref(traits, ID2SYM(rb_intern("dynamic")))        == Qtrue;
-    int32_t member_count     = RARRAY_LEN(members);
+  write_c_int8(buffer, AMF3_DYNAMIC_OBJECT);
   
-    int32_t class_ref = amf_cache_get_traitref(buffer->amf_cache, class_name);
-    if(class_ref != Qnil)
-    {
-      write_c_integer(buffer, class_ref << 2 | 0x01);
-    }
-    else
-    {
-      if(class_name != Qnil)
-      {
-        amf_cache_add_traitref(buffer->amf_cache, class_name);
-      }
-
-      // write header
-      int32_t header = 0x03;
-      if(dynamic) {
-        header = header | 0x02 << 2;
-      }
-      if(externalizable) {
-        header = header | 0x01 << 2;
-      }
-      header = header | member_count << 4;
-      write_c_integer(buffer, header);
-    
-      // write class_name
-      write_amf3_string(buffer, class_name);
-    
-      // write out members
-      int32_t i;
-      for(i=0; i<member_count; i++)
-      {
-        write_amf3_string(buffer, RARRAY_PTR(members)[i]);
-      }
-    }
-
-    if(externalizable)
-    {
-      // write_amf3(buffer, rb_funcall(rval, rb_intern("externalized_data"), 0));
-      // return;
-    }
-    
-    // write out sealed properties
-    VALUE properties = rb_funcall(rb_cRubyAMF_ClassMapping, rb_intern("as_properties_for"), 1, rval);
-    int32_t i;
-    for(i=0; i<member_count; i++)
-    {
-      VALUE member = RARRAY_PTR(members)[i];
-      write_amf3(buffer, rb_hash_aref(properties, member));
-      rb_funcall(properties, rb_intern("delete"), 1, member);
-    }
-    
-    if(dynamic)
-    {
-      rb_block_call(properties, rb_intern("each_pair"), 0, 0, write_amf3_hash_pair, (VALUE) buffer);
-      write_c_int8(buffer, AMF3_CLOSE_DYNAMIC_OBJECT);
-    }
-    
-    rb_gc_unregister_address(&traits);
+  VALUE properties;
+  if(rb_instance_of(rval, rb_cHash)) // Ruby Hash
+  {
+    write_c_int8(buffer, AMF3_ANONYMOUS_OBJECT);
+    properties = rval;
   }
+  else // typed object
+  {
+    VALUE class_name = rb_funcall(rb_cRubyAMF_ClassMapping, rb_intern("as_class_name_for"), 1, rval);
+    if(class_name != Qnil)
+      write_amf3_string(buffer, class_name);
+    else
+      write_c_int8(buffer, AMF3_ANONYMOUS_OBJECT);
+    
+    properties = rb_funcall(rb_cRubyAMF_ClassMapping, rb_intern("as_properties_for"), 1, rval);
+  }
+  
+  rb_block_call(properties, rb_intern("each"), 0, 0, write_amf3_hash_pair, (VALUE)buffer);
+
+  write_c_int8(buffer, AMF3_CLOSE_DYNAMIC_OBJECT);
 }
 
 void write_amf3(buffer_t* buffer, VALUE object)
@@ -220,7 +182,7 @@ void write_amf3(buffer_t* buffer, VALUE object)
       if(c_double >= MIN_AMF3_INTEGER && c_double <= MAX_AMF3_INTEGER) // check valid range for 29bits
       {
         write_c_int8(buffer, AMF3_INTEGER);
-        write_c_integer(buffer, NUM2LONG(object));
+        write_c_integer(buffer, (int32_t)NUM2LONG(object));
       }
       else
       {
@@ -254,21 +216,14 @@ void write_amf3(buffer_t* buffer, VALUE object)
       write_amf3_object(buffer, object);
       break;
     }
+    case T_DATA:
     case T_OBJECT: {
-      if(rb_is_a(object, rb_cDate))
+      if(rb_is_a(object, rb_cTime) || rb_is_a(object, rb_cDateTime))
       {
         write_c_int8(buffer, AMF3_DATE);
-        write_amf3_date(buffer, object);
+        write_amf3_time(buffer, object);
       }
-      else
-      {
-        write_c_int8(buffer, AMF3_OBJECT);
-        write_amf3_object(buffer, object);
-      }
-      break;
-    }
-    case T_DATA: {
-      if(rb_is_a(object, rb_cTime))
+      else if(rb_is_a(object, rb_cDate))
       {
         write_c_int8(buffer, AMF3_DATE);
         write_amf3_date(buffer, object);

@@ -33,7 +33,7 @@ inline int context_free(load_context_t* context) {
     return 0;
 }
 
-inline void check_for_eof(load_context_t* context, int len)
+inline void check_for_eof(load_context_t* context, uint32_t len)
 {
   if ((context->cursor + len) > context->buffer_end)
   {
@@ -41,7 +41,7 @@ inline void check_for_eof(load_context_t* context, int len)
   }
 }
 
-inline u_char* read_bytes(load_context_t* context, int len)
+inline u_char* read_bytes(load_context_t* context, uint32_t len)
 {
   check_for_eof(context, len); // raises eof error
   u_char* buffer = context->cursor;

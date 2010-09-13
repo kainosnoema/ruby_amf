@@ -4,17 +4,19 @@ SHELL = /bin/sh
 #### Start of system configuration section. ####
 
 srcdir = .
-topdir = /Users/kainosnoema/.rvm/rubies/ruby-1.9.1-p378/include/ruby-1.9.1
-hdrdir = /Users/kainosnoema/.rvm/rubies/ruby-1.9.1-p378/include/ruby-1.9.1
-arch_hdrdir = /Users/kainosnoema/.rvm/rubies/ruby-1.9.1-p378/include/ruby-1.9.1/$(arch)
+topdir = /Users/kainosnoema/.rvm/rubies/ruby-1.9.2-p0/include/ruby-1.9.1
+hdrdir = /Users/kainosnoema/.rvm/rubies/ruby-1.9.2-p0/include/ruby-1.9.1
+arch_hdrdir = /Users/kainosnoema/.rvm/rubies/ruby-1.9.2-p0/include/ruby-1.9.1/$(arch)
 VPATH = $(srcdir):$(arch_hdrdir)/ruby:$(hdrdir)/ruby
-prefix = $(DESTDIR)/Users/kainosnoema/.rvm/rubies/ruby-1.9.1-p378
+prefix = $(DESTDIR)/Users/kainosnoema/.rvm/rubies/ruby-1.9.2-p0
+rubylibprefix = $(libdir)/$(RUBY_BASE_NAME)
 exec_prefix = $(prefix)
 vendorhdrdir = $(rubyhdrdir)/vendor_ruby
 sitehdrdir = $(rubyhdrdir)/site_ruby
-rubyhdrdir = $(includedir)/$(RUBY_INSTALL_NAME)-$(ruby_version)
-vendordir = $(libdir)/$(RUBY_INSTALL_NAME)/vendor_ruby
-sitedir = $(libdir)/$(RUBY_INSTALL_NAME)/site_ruby
+rubyhdrdir = $(includedir)/$(RUBY_BASE_NAME)-$(ruby_version)
+vendordir = $(rubylibprefix)/vendor_ruby
+sitedir = $(rubylibprefix)/site_ruby
+ridir = $(datarootdir)/$(RI_BASE_NAME)
 mandir = $(datarootdir)/man
 localedir = $(datarootdir)/locale
 libdir = $(exec_prefix)/lib
@@ -34,7 +36,7 @@ datarootdir = $(prefix)/share
 libexecdir = $(exec_prefix)/libexec
 sbindir = $(exec_prefix)/sbin
 bindir = $(exec_prefix)/bin
-rubylibdir = $(libdir)/$(ruby_install_name)/$(ruby_version)
+rubylibdir = $(rubylibprefix)/$(ruby_version)
 archdir = $(rubylibdir)/$(arch)
 sitelibdir = $(sitedir)/$(ruby_version)
 sitearchdir = $(sitelibdir)/$(sitearch)
@@ -43,7 +45,7 @@ vendorarchdir = $(vendorlibdir)/$(sitearch)
 
 CC = gcc
 CXX = g++
-LIBRUBY = $(LIBRUBY_A)
+LIBRUBY = $(LIBRUBY_SO)
 LIBRUBY_A = lib$(RUBY_SO_NAME)-static.a
 LIBRUBYARG_SHARED = -l$(RUBY_SO_NAME)
 LIBRUBYARG_STATIC = -l$(RUBY_SO_NAME)-static
@@ -51,30 +53,31 @@ OUTFLAG = -o
 COUTFLAG = -o 
 
 RUBY_EXTCONF_H = 
-cflags   = $(optflags) $(debugflags) $(warnflags)
-optflags = -O2
-debugflags = -g
-warnflags = -Wall -Wno-parentheses
-CFLAGS   =  -fno-common  $(cflags) -pipe -fno-common 
+cflags   =  $(optflags) $(debugflags) $(warnflags)
+optflags = -O3
+debugflags = -ggdb
+warnflags = -Wextra -Wno-unused-parameter -Wno-parentheses -Wpointer-arith -Wwrite-strings -Wno-missing-field-initializers -Wshorten-64-to-32 -Wno-long-long
+CFLAGS   = -fno-common $(cflags)  -fno-common -pipe -Wall  
 INCFLAGS = -I. -I$(arch_hdrdir) -I$(hdrdir)/ruby/backward -I$(hdrdir) -I$(srcdir)
 DEFS     = 
-CPPFLAGS =   -D_XOPEN_SOURCE -D_DARWIN_C_SOURCE $(DEFS) $(cppflags)
-CXXFLAGS = $(CFLAGS)  $(cxxflags)
+CPPFLAGS =  -D_XOPEN_SOURCE -D_DARWIN_C_SOURCE $(DEFS) $(cppflags)
+CXXFLAGS = $(CFLAGS) $(cxxflags)
 ldflags  = -L. -L/usr/local/lib
-dldflags = 
-archflag = 
-DLDFLAGS = $(ldflags) $(dldflags) $(archflag)
-LDSHARED = cc -dynamic -bundle -undefined suppress -flat_namespace
-LDSHAREDXX = $(LDSHARED)
+dldflags = -Wl,-undefined,dynamic_lookup -Wl,-multiply_defined,suppress -Wl,-flat_namespace
+ARCH_FLAG = 
+DLDFLAGS = $(ldflags) $(dldflags)
+LDSHARED = $(CC) -dynamic -bundle
+LDSHAREDXX = $(CXX) -dynamic -bundle
 AR = ar
 EXEEXT = 
 
+RUBY_BASE_NAME = ruby
 RUBY_INSTALL_NAME = ruby
-RUBY_SO_NAME = ruby
-arch = i386-darwin10.2.0
-sitearch = i386-darwin10.2.0
+RUBY_SO_NAME = ruby.1.9.1
+arch = x86_64-darwin10.4.0
+sitearch = $(arch)
 ruby_version = 1.9.1
-ruby = /Users/kainosnoema/.rvm/rubies/ruby-1.9.1-p378/bin/ruby
+ruby = /Users/kainosnoema/.rvm/rubies/ruby-1.9.2-p0/bin/ruby
 RUBY = $(ruby)
 RM = rm -f
 RM_RF = $(RUBY) -run -e rm -- -rf
@@ -101,7 +104,7 @@ extout =
 extout_prefix = 
 target_prefix = 
 LOCAL_LIBS = 
-LIBS =  -lstdc++  -lpthread -ldl -lobjc  
+LIBS = $(LIBRUBYARG_SHARED) -lstdc++  -lpthread -ldl -lobjc 
 SRCS = AMF0Deserializer.c AMF0Serializer.c AMF3Deserializer.c AMF3Serializer.c AMFCache.c AMFRemoting.c IOReadBuffer.c IOWriteBuffer.c ruby_amf.c ruby_amf_core.c
 OBJS = AMF0Deserializer.o AMF0Serializer.o AMF3Deserializer.o AMF3Serializer.o AMFCache.o AMFRemoting.o IOReadBuffer.o IOWriteBuffer.o ruby_amf.o ruby_amf_core.o
 TARGET = ruby_amf_ext
@@ -122,6 +125,8 @@ CLEANOBJS     = *.o  *.bak
 
 all:    $(DLLIB)
 static: $(STATIC_LIB)
+.PHONY: all install static install-so install-rb
+.PHONY: clean clean-so clean-rb
 
 clean-rb-default::
 clean-rb::
@@ -143,7 +148,8 @@ install: install-so install-rb
 install-so: $(RUBYARCHDIR)
 install-so: $(RUBYARCHDIR)/$(DLLIB)
 $(RUBYARCHDIR)/$(DLLIB): $(DLLIB)
-	$(INSTALL_PROG) $(DLLIB) $(RUBYARCHDIR)
+	@-$(MAKEDIRS) $(@D)
+	$(INSTALL_PROG) $(DLLIB) $(@D)
 install-rb: pre-install-rb install-rb-default
 install-rb-default: pre-install-rb-default
 pre-install-rb: Makefile

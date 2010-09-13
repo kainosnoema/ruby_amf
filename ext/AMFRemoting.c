@@ -95,16 +95,19 @@ void write_amf_request(buffer_t* buffer, VALUE envelope)
   uint16_t body_count = FIX2INT(rb_funcall(bodies, rb_intern("length"), 0));
   write_c_word16_network(buffer, body_count);
   for (i=0; i<body_count; i++) {
-    VALUE body = RARRAY_PTR(bodies)[i];
+    volatile VALUE body = RARRAY_PTR(bodies)[i];
 
     write_utf_string(buffer, rb_iv_get(body, "@target_uri"));
     write_utf_string(buffer, rb_iv_get(body, "@response_uri"));
     
     write_c_word32_network(buffer, -1); // body length, set to maximum
     if(FIX2INT(amf_version) == 3)
+    {
       write_c_int8(buffer, AMF0_AMF3_TYPE); // switch to AMF3 format
-      
-    write_amf3(buffer, rb_iv_get(body, "@data"));
+      write_amf3(buffer, rb_iv_get(body, "@data"));
+    }
+    else
+      write_amf0(buffer, rb_iv_get(body, "@data"));
   }
 }
 

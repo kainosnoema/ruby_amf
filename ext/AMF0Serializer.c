@@ -26,21 +26,21 @@ void write_amf0_number(buffer_t* buffer, VALUE rval)
 
 void write_utf_string(buffer_t* buffer, VALUE rval)
 {
-  uint32_t len = RSTRING_LEN(rval);
+  uint32_t len = (uint32_t)RSTRING_LEN(rval);
   write_c_word16_network(buffer, len);
-  write_bytes(buffer, (u_char *)RSTRING_PTR(rval), RSTRING_LEN(rval));
+  write_bytes(buffer, (u_char *)RSTRING_PTR(rval), len);
 }
 
 void write_utf_long_string(buffer_t* buffer, VALUE rval)
 {
-  uint32_t len = RSTRING_LEN(rval);
+  uint32_t len = (uint32_t)RSTRING_LEN(rval);
   write_c_word32_network(buffer, len);
   write_bytes(buffer, (u_char *)RSTRING_PTR(rval), len);
 }
 
 void write_amf0_string(buffer_t* buffer, VALUE rval)
 {
-  if(RSTRING_LEN(rval) < 2^16-1)
+  if(RSTRING_LEN(rval) < (2^16)-1)
   {
     write_c_int8(buffer, AMF0_STRING);
     write_utf_string(buffer, rval);
@@ -64,7 +64,7 @@ void write_amf0_date(buffer_t* buffer, VALUE rval)
   }
   else
   {
-    rb_funcall(rval, rb_intern("utc"), 0);
+    rval = rb_funcall(rval, rb_intern("getutc"), 0);
     milleseconds = NUM2DBL(rb_funcall(rval, rb_intern("to_f"), 0)) * 1000;
   }
 

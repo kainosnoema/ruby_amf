@@ -36,6 +36,14 @@ module RubyAMF
         @headers = {}
         @body = nil
       end
+      
+      def target_uri
+        [@source.to_s, @operation.to_s].reject(&:blank?).join(".")
+      end
+      
+      def params
+        @body
+      end
     end
 
     # Maps to <tt>flex.messaging.messages.AsyncMessage</tt>
@@ -67,14 +75,14 @@ module RubyAMF
 
     # Maps to <tt>flex.messaging.messages.AcknowledgeMessage</tt>
     class AcknowledgeMessage < AsyncMessage
-      def initialize(message = nil)
+      def initialize(message = nil, body = nil)
         @clientId = rand_uuid
         @destination = nil
         @messageId = rand_uuid
         @timestamp = Time.new.to_i*100
         @timeToLive = 0
         @headers = {}
-        @body = nil
+        @body = body
 
         if message.is_a?(AbstractMessage)
           @correlationId = message.messageId

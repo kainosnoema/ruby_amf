@@ -60,7 +60,7 @@ VALUE rb_read_amf3_string(load_context_t* context)
     return amf_cache_get_string(context->amf_cache, (header >> 1));
   } else {
     int32_t len = (header >> 1);
-    VALUE string = rb_str_new((char*)read_bytes(context, (size_t)len), len);
+    VALUE string = rb_str_new((char*)read_bytes(context, (uint32_t)len), len);
     if(len > 0) {
       amf_cache_add_string(context->amf_cache, string);
     }
@@ -129,19 +129,19 @@ VALUE rb_read_amf3_array(load_context_t* context)
 
 VALUE rb_read_amf3_object(load_context_t* context)
 {
-  int32_t i,type = c_read_amf3_integer(context);
+  int32_t type = c_read_amf3_integer(context);
   if (is_amf3_reference(type)) {
     return amf_cache_get_obj(context->amf_cache, (type >> 1));
   }
   
   VALUE traits             = Qnil;
   VALUE class_name         = Qnil;
-  int32_t attribute_count  = 0;
+  uint32_t attribute_count = 0;
   uint8_t externalizable   = 0;
   uint8_t dynamic          = 0;
   VALUE members            = Qnil;
   
-  int32_t class_type = type >> 1;
+  uint32_t class_type = type >> 1;
   if (is_amf3_reference(class_type))
   {
     traits  = amf_cache_get_trait(context->amf_cache, (class_type >> 1));
@@ -149,7 +149,7 @@ VALUE rb_read_amf3_object(load_context_t* context)
     members          = rb_hash_aref(traits, rb_str_new2("members"));
     externalizable   = rb_hash_aref(traits, rb_str_new2("externalizable")) == Qtrue;
     dynamic          = rb_hash_aref(traits, rb_str_new2("dynamic"))        == Qtrue;
-    attribute_count  = RARRAY_LEN(members);
+    attribute_count  = (uint32_t)RARRAY_LEN(members);
   }
   else
   {
@@ -161,9 +161,9 @@ VALUE rb_read_amf3_object(load_context_t* context)
     members          = rb_ary_new();
     
     VALUE key = Qnil;
+    uint32_t i;
     for(i=0; i<attribute_count; i++) {
       key = rb_read_amf3_string(context);
-      // key = rb_funcall(key, rb_intern("underscore"), 0);
       rb_ary_push(members, key);
     }
     
@@ -187,6 +187,7 @@ VALUE rb_read_amf3_object(load_context_t* context)
     VALUE dynamic_props = Qnil;
 
     VALUE key = Qnil;
+    uint32_t i;
     for (i=0; i<RARRAY_LEN(members); i++) {
       key = rb_ary_entry(members, i);
       rb_hash_aset(props, key, rb_read_amf3(context));
@@ -197,7 +198,6 @@ VALUE rb_read_amf3_object(load_context_t* context)
       dynamic_props = rb_hash_new();
       while (peek_byte(context) != 0x01) {
         key = rb_read_amf3_string(context);
-        // key = rb_funcall(key, rb_intern("underscore"), 0);
         rb_hash_aset(dynamic_props, key, rb_read_amf3(context));
       }
       read_byte(context);
@@ -218,8 +218,8 @@ VALUE rb_read_amf3_xml(load_context_t* context)
     return amf_cache_get_obj(context->amf_cache, (type >> 1));
   }
   
-  int32_t len = (type >> 1);
-  VALUE object = rb_str_new((char*)read_bytes(context, (size_t)len), len);
+  uint32_t len = (type >> 1);
+  VALUE object = rb_str_new((char*)read_bytes(context, (uint32_t)len), len);
   if(len > 0) {
     amf_cache_add_obj(context->amf_cache, object);
   }
@@ -234,7 +234,7 @@ VALUE rb_read_amf3_byte_array(load_context_t* context)
   }
   
   int32_t len = (type >> 1);
-  VALUE object = rb_str_new((char*)read_bytes(context, (size_t)len), len);
+  VALUE object = rb_str_new((char*)read_bytes(context, (uint32_t)len), len);
   if(len > 0) {
     amf_cache_add_obj(context->amf_cache, object);
   }

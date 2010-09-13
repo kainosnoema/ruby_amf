@@ -1,16 +1,18 @@
 module RubyAMF
   module Remoting
+    AMF_MIME_TYPE = "application/x-amf".freeze
+
     # Containers for the AMF request/response
     class Envelope
       include RubyAMF::Messages
-      attr_reader :action_dispatch_request, :amf_version, :headers, :bodies
-      
+      attr_reader :amf_version, :headers, :bodies
+
       def deserialize(stream = "")
-        raise 'should have been overridden by the RubyAMF::Ext::AMFRemoting native extension!'
+        raise 'deserialize() should have been overridden by either RubyAMF::Pure or RubyAMF::Ext, the native extension!'
       end
             
       def serialize
-        raise 'should have been overridden by the RubyAMF::Ext::AMFRemoting native extension!'
+        raise 'serialize() should have been overridden by either RubyAMF::Pure or RubyAMF::Ext, the native extension!'
       end
       
       class Header
@@ -31,6 +33,10 @@ module RubyAMF
           @response_uri = response_uri
           @data = data
         end
+
+        def params
+          @data
+        end
       end
     end
     
@@ -43,14 +49,11 @@ module RubyAMF
     end
     
     class Request < Envelope
-      attr_reader :target_uri, :params
-
       # initialize the envelope using an ActionDispatch::Request
       # automatically deserializes the AMF message data
       def initialize(request = nil)
         if request.is_a?(ActionDispatch::Request)
-          @action_dispatch_request = request
-          deserialize(@action_dispatch_request.raw_post) # calls method implemented in native C extension
+          deserialize(request.raw_post) # calls method implemented in native C extension
         else
           @amf_version = 0
           @headers = []
@@ -60,137 +63,120 @@ module RubyAMF
       
       # Builds response from the request, iterating over each method and calling
       # the provided block with the remoting service method and parameters
-      def each_method_call &block
+      def each_message &block
         response_envelope = Response.new({:amf_version => (@amf_version == 3 ? 3 : 0)})
         
-        @bodies.each do |b|
-          if b.data.is_a?(Array) && b.data.length == 1 && b.data[0].is_a?(AbstractMessage)
-            b.data = b.data[0]
+        @bodies.each do |body|
+          if body.data.is_a?(Array) && body.data.length == 1 && body.data[0].is_a?(AbstractMessage)
+            message = body.data[0]
+          else
+            message = body.data
           end
           
-          case b.data
+          case message
             when CommandMessage
-              command_msg = b.data
-              if command_msg.operation == CommandMessage::CLIENT_PING_OPERATION
-                response = AcknowledgeMessage.new(command_msg)
+              if message.operation == CommandMessage::CLIENT_PING_OPERATION
+                response_msg = AcknowledgeMessage.new(message)
               else
-                e = Exception.new("CommandMessage #{command_msg.operation} not implemented")
-                e.set_backtrace ["RubyAMF::Remoting::Envelope each_method_call"]
-                response = ErrorMessage.new(command_msg, e)
+                e = Exception.new("CommandMessage #{message.operation} not implemented")
+                e.set_backtrace ["RubyAMF::Remoting::Request each_message"]
+                response_msg = ErrorMessage.new(message, e)
               end
-            when RemotingMessage
-              remoting_msg = b.data
-              service_method = [remoting_msg.source.to_s, remoting_msg.operation].reject(&:blank?).join(".")
               
+            when RemotingMessage
               # attempt to call the block using the remote message body, catch any exceptions
-              body = call_service(  :target_uri => service_method,
-                                    :params => remoting_msg.body,
-                                    :source => remoting_msg,
-                                    :block => block)
-
-              if body.is_a?(ErrorMessage)
-                response_msg = body
-              else
-                acknowledge_msg = AcknowledgeMessage.new(remoting_msg)
-                acknowledge_msg.body = body
-                response_msg = acknowledge_msg
-              end
-
+              response_msg = call_block_with(message, &block)
+              response_msg = AcknowledgeMessage.new(message, response_msg) unless response_msg.is_a?(ErrorMessage)
+              
             else
-              response_msg = call_service( :target_uri => b.target_uri, :params => b.data, :source => b, :block => block)
+              response_msg = call_block_with(body, &block)
           end
       
-          target_uri = b.response_uri + (response_msg.is_a?(ErrorMessage) ? '/onStatus' : '/onResult')
-          response_envelope.bodies << Body.new(target_uri, '', response_msg)
+          response_target_uri = body.response_uri + (response_msg.is_a?(ErrorMessage) ? '/onStatus' : '/onResult')
+          response_envelope.bodies << Body.new(response_target_uri, '', response_msg)
         end
         
         return response_envelope
       end
       
-      def find_service
-        RubyAMF::Remoting.find_service_for(self)
-      end
-      
       private
-        def call_service args
+        def call_block_with message, &block
           begin
-            @target_uri = args[:target_uri]
-            @params = args[:params]
-            args[:block].call(self)
+            block.call(message)
           rescue Exception => e
-            ErrorMessage.new(args[:source], e)
+            ErrorMessage.new(message, e)
           end
         end
     end
     
     class Service
-      attr_reader :controller, :action
+      attr_reader :message, :request, :controller, :action
       
-      def initialize(controller, action)
-        @controller = controller
-        @action = action
+      def initialize(message, original_request)
+        @message = message
+        @request = original_request.clone
+        
+        # find, instantiate and prepare controller
+        instantiate_controller
+        prepare_controller_request
       end
-    end
-    
-    def find_service_for(request)
-      target_uri = request.target_uri
-      params = request.params
       
-      uri_elements =  target_uri.split(".")
-      action_name = uri_elements.pop
-      
-      uri_elements.last << "Controller" unless uri_elements.last.include?("Controller")
-      service_class_name = uri_elements.collect(&:camelize).join("::")
+      def process
+        @controller.process(@action)
+        @controller.processed_amf
+      end
+         
+      protected
+        def instantiate_controller
+          uri_elements =  @message.target_uri.split(".")
+          @action = uri_elements.pop.to_sym
 
-      begin
-        service_controller = service_class_name.constantize.new # handle on service
-      rescue Exception => e
-        Rails.logger.warn e.message.to_s
-        Rails.logger.warn e.backtrace.take(5).join("\n")
-        # raise RUBYAMFException.new(RUBYAMFException.UNDEFINED_OBJECT_REFERENCE_ERROR, "There was an error loading the service class #{class_name}")
-        raise Exception.new("There was an error calling the service")
-      end
-      
-      if service_controller.private_methods.any? { |m| m.to_s == action_name }
-        # raise RUBYAMFException.new(RUBYAMFException.METHOD_ACCESS_ERROR, "The method {#{action_name}} in class {#{class_file_path}} is declared as private, it must be defined as public to access it.")
-        raise Exception.new("There was an error calling the service")
-      elsif !service_controller.public_methods.any? { |m| m.to_s == action_name }
-        # raise RUBYAMFException.new(RUBYAMFException.METHOD_UNDEFINED_METHOD_ERROR, "The method {#{action_name}} in class {#{class_file_path}} is not declared.")
-        raise Exception.new("There was an error calling the service")
-      end
-      
-      service_req = request.action_dispatch_request.clone
-      controller_name = service_class_name.gsub("Controller","").underscore
-      
-      # set new controller and action names
-      [service_req.parameters, service_req.request_parameters, service_req.path_parameters].each do |params|
-        params['controller'] = controller_name
-        params['action']     = action_name
-      end
-      
-      # set new path info
-      ['PATH_INFO', 'REQUEST_PATH', 'REQUEST_URI'].each do |path_env_key|
-        service_req.env[path_env_key] = "#{controller_name}/#{action_name}"
-      end
+          uri_elements.last << "Controller" unless uri_elements.last.include?("Controller")
+          controller_class_name = uri_elements.collect(&:camelize).join("::")
 
-      # set new accept mime type
-      service_req.env['HTTP_ACCEPT']        = 'application/x-amf'
+          begin
+            @controller = controller_class_name.constantize.new # handle on service
+          rescue Exception => e
+            Rails.logger.warn e.message.to_s
+            Rails.logger.warn e.backtrace.take(10).join("\n")
+            # raise RUBYAMFException.new(RUBYAMFException.UNDEFINED_OBJECT_REFERENCE_ERROR, "There was an error loading the service class #{controller_class_name}")
+            raise Exception.new("There was an error loading the service class #{controller_class_name}")
+          end
+
+          unless @controller.public_methods.any? { |m| m == @action }
+            # raise RUBYAMFException.new(RUBYAMFException.METHOD_UNDEFINED_METHOD_ERROR, "There is no publicly declared method {#{@action}} in class {#{controller_class_name}}.")
+            raise Exception.new("There is no publicly declared method {#{@action}} in class {#{controller_class_name}}.")
+          end
+        end
       
-      # process the request params put them
-      rubyamf_params = {}
-      if params && !params.empty?
-        # add original array for easy access
-        service_req.parameters[:ruby_amf_params] = params
-        # also put each in the request parameter hash
-        params.each_with_index { |item, i| service_req.parameters[i] = item }
-      end
-      
-      # set the controller request to our updated request
-      service_controller.request = service_req
-      service_controller.response = ActionDispatch::Response.new # prevents errors
-      
-      return Service.new(service_controller, action_name.to_sym)
+        def prepare_controller_request
+          controller_name = @controller.class.name.gsub("Controller","").underscore
+          
+          # set new controller and action names
+          [@request.parameters, @request.request_parameters, @request.path_parameters].each do |req_params|
+            req_params['controller'] = controller_name
+            req_params['action']     = @action.to_s
+          end
+
+          # set new path info & accept mime type
+          path_info = "#{controller_name}/#{@action}"
+          ['PATH_INFO', 'REQUEST_PATH', 'REQUEST_URI'].each { |key| @request.env[key] = path_info }
+          @request.env['HTTP_ACCEPT'] = AMF_MIME_TYPE
+
+          # process the request params and put them in the controller params
+          if @message.params.present?
+            @controller.amf_params = @message.params # add original array for easy access
+            @message.params.each_with_index do |item, i|
+              @request.parameters[i] = item
+            end
+          end
+
+          # set the controller request to our updated request
+          @controller.request = @request
+          @controller.response = ActionDispatch::Response.new # prevents errors
+          @controller.is_amf = true # set our conditional helper
+
+        end
     end
-    
   end
 end

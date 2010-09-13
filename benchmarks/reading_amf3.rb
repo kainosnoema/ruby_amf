@@ -4,7 +4,11 @@ require 'rubygems'
 require 'benchmark'
 require 'active_record'
 require 'active_support/inflector'
-require 'lib/ruby_amf'
+require 'lib/ruby_amf/typed_hash'
+require 'lib/ruby_amf/messages'
+require 'lib/ruby_amf/remoting'
+require 'lib/ruby_amf/class_mapping'
+require 'ext/ruby_amf_ext'
 require 'amfora'
 
 def bm_amf(t, o)

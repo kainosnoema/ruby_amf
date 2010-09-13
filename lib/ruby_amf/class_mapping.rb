@@ -29,17 +29,18 @@ module RubyAMF
       # for deserializing
       #
       
-      def ruby_class_name_for(as_class_name)
-        mappings.ruby_class_name_for(as_class_name.to_s)
+      def ruby_class_name_for(class_name)
+        mapping = mappings.mapping_for_as(class_name.to_s)
+        mapping.nil? ? nil : mapping.ruby_class_name
       end
       
       def ruby_object_for(as_class_name)
         ruby_class_name = ruby_class_name_for(as_class_name)
         if ruby_class_name.nil?
-          return TypedHash.new(as_class_name)  # Populate a simple hash, since no mapping
+          TypedHash.new(as_class_name)  # no mapping, populate a hash with an explicit type
         else
           ruby_class = ruby_class_name.split('::').inject(Kernel) {|scope, const_name| scope.const_get(const_name)}
-          return ruby_class.new
+          ruby_class.new
         end
       end
       
@@ -61,12 +62,12 @@ module RubyAMF
       #
       def as_class_name_for(ruby_obj)
         if(ruby_obj.is_a?(TypedHash))
-          as_class_name = ruby_obj._explicit_type
+          ruby_obj._explicit_type
         else
-          ruby_class_name = ruby_obj.is_a?(String) ? ruby_obj : ruby_obj.class.name
-          as_class_name = mappings.as_class_name_for(ruby_class_name)
+          class_name = ruby_obj.is_a?(String) ? ruby_obj : ruby_obj.class.name
+          mapping = mappings.mapping_for_ruby(class_name)
+          mapping.nil? ? nil : mapping.as_class_name
         end
-        as_class_name
       end
       
       def as_traits_for(ruby_obj)
@@ -75,10 +76,25 @@ module RubyAMF
       
       def as_properties_for(ruby_obj)
         properties = {}
-        instance_vars = ruby_obj.instance_variables - @@ignored_instance_vars
-        instance_vars.each do |instance_var|
-          attr_name = instance_var.to_s[1..-1]
-          properties[attr_name] = ruby_obj.instance_variable_get(instance_var)
+        if ruby_obj.is_a?(Hash)
+          properties = ruby_obj
+        elsif(ruby_obj.is_a?(ActiveRecord::Base))
+          ruby_obj.attributes.each do |key, value|
+            properties[key] = value
+          end
+          # pick up all loaded associations
+          ruby_obj.instance_variables.each do |i_var|
+            var_name = i_var.to_s[1..-1]
+            mapping = mappings.mapping_for_ruby(ruby_obj.class.name)
+            if(mapping && mapping.associations.include?(var_name))
+              properties[var_name] = ruby_obj.instance_variable_get(i_var).try(:to_a)
+            end
+          end
+        else
+          instance_vars = ruby_obj.instance_variables - @@ignored_instance_vars
+          instance_vars.each do |i_var|
+            properties[i_var.to_s[1..-1]] = ruby_obj.instance_variable_get(i_var)
+          end
         end
         properties
       end
@@ -107,7 +123,6 @@ module RubyAMF
         map :actionscript => 'flex.messaging.messages.CommandMessage',      :ruby => 'RubyAMF::Messages::CommandMessage'
         map :actionscript => 'flex.messaging.messages.AcknowledgeMessage',  :ruby => 'RubyAMF::Messages::AcknowledgeMessage'
         map :actionscript => 'flex.messaging.messages.ErrorMessage',        :ruby => 'RubyAMF::Messages::ErrorMessage'
-        map :actionscript => 'flex.messaging.io.ArrayCollection',           :ruby => 'RubyAMF::Messages::ArrayCollection'
       end
 
       # Maps AS classes to ruby classes.
@@ -115,39 +130,57 @@ module RubyAMF
       #
       # For example:
       #   m.map :actionscript => 'com.example.Date', :ruby => 'Example::Date'
-      def map(params = {})
-        [:actionscript, :ruby].each {|k| params[k] = params[k].to_s if params[k] }
-        
-        if params.key?(:actionscript) and params.key?(:ruby)
-          @actionscript_mappings[params[:actionscript]] = params[:ruby]
-          @ruby_mappings[params[:ruby]] = params[:actionscript]
-        end
-        
-        if params.key?(:actionscript)
-          params[:ruby] = ruby_class_name_for(params[:actionscript])
+      def map(options = {})
+        [:actionscript, :ruby].each {|k| options[k] = options[k].to_s if options[k] }
+
+        mapping = Mapping.new(options)
+        if mapping.valid?
+          @actionscript_mappings[options[:actionscript]] = @ruby_mappings[options[:ruby]] = mapping
+        else
+          raise Exception.new("Invalid mapping: #{mapping.errors.join(', ')}")
         end
       end
 
-      def as_class_name_for(value)
-        as_class_name = @ruby_mappings[value.to_s]
-        # we don't want to assume actionscript types, no way to know if it will succeed
-        as_class_name
+      def mapping_for_ruby(value)
+        @ruby_mappings[value.to_s]
       end
 
-      def ruby_class_name_for(value)
-        as_class_name = value.to_s
-        unless (ruby_class_name = @actionscript_mappings[as_class_name]) || actionscript_namespace.nil?
-          begin 
-            assumed_ruby_class = as_class_name.sub("#{actionscript_namespace}.", "").constantize
-            assumed_ruby_class.new
-            ruby_class_name = assumed_ruby_class
-            @ruby_mappings[ruby_class_name] ||= as_class_name
-            @actionscript_mappings[as_class_name] ||= ruby_class_name
+      def mapping_for_as(value)
+        @actionscript_mappings[value.to_s]
+      end
+      
+      class Mapping
+        attr_accessor :as_class_name,
+                      :ruby_class_name,
+                      :attributes,
+                      :associations,
+                      :errors
+                      
+        def initialize(options = {})
+          @as_class_name      = options[:actionscript]
+          @ruby_class_name    = options[:ruby]
+          @attributes         = options[:attributes]
+          @errors = []
+          
+          if @as_class_name.blank? || @ruby_class_name.blank?
+            @errors << "missing mapping parameters"
+            return
+          end
+          
+          begin
+            object = @ruby_class_name.constantize.new
+            if object.is_a?(ActiveRecord::Base)
+              @associations = object.class.reflect_on_all_associations.collect{|a| a.name.to_s }
+            end
           rescue
-            # if assumed_ruby_class doesn't work, we don't want to save the mapping
+            @errors << "unable to instantiate #{@ruby_class_name}"
+            return
           end
         end
-        ruby_class_name
+        
+        def valid?
+          @errors.blank?
+        end        
       end
     end
   end
