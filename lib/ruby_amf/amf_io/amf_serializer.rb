@@ -200,23 +200,23 @@ module RubyAMF
         end
       end
   
-      def write_amf3_string(string)
-        if index = @stored_strings[string]
-          if string == "" # store this initially so it gets caught by the stored_strings check
+      def write_amf3_string(str)
+        if index = @stored_strings[str]
+          if str == "" # store this initially so it gets caught by the stored_strings check
             @stream << "\001" # represents an amf3 empty string
           else
             reference = index << 1
             write_amf3_integer(reference)
           end
         else
-          string = string.encode("UTF-8") if (string.encoding.name != 'UTF-8' || string.frozen?)
-          @stored_strings[string] = @current_strings_index
+          str = str.encode("UTF-8") if (str.respond_to?(:encode) && (str.encoding.name != 'UTF-8' || str.frozen?))
+          @stored_strings[str] = @current_strings_index
           @current_strings_index += 1 # increment the index
-          reference = string.bytesize
+          reference = str.bytesize
           reference = reference << 1
           reference = reference | 1
           write_amf3_integer(reference)
-          writen(string.force_encoding('ASCII-8BIT'))
+          writen(str.force_encoding('ASCII-8BIT'))
         end
       end
     
