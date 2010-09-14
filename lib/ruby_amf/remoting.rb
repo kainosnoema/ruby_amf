@@ -110,72 +110,74 @@ module RubyAMF
     end
     
     class Service
-      attr_reader :message, :request, :controller, :action
+      attr_reader :message, :request, :controller, :action_name
       
       def initialize(message, original_request)
         @message = message
         @request = original_request.clone
         
         # find, instantiate and prepare controller
-        instantiate_controller
-        prepare_controller_request
+        uri_elements =  @message.target_uri.split(".")
+        @action_name = uri_elements.pop.to_sym
+
+        controller_class_name = uri_elements.collect(&:camelize).join("::")
+        @controller = find_controller_for(controller_class_name)
+        
+        # set new controller and action names
+        [@request.parameters, @request.request_parameters, @request.path_parameters].each do |req_params|
+          req_params['controller'] = @controller.controller_name
+          req_params['action']     = @action_name.to_s
+        end
+
+        # set new path info & accept mime type
+        path_info = "#{controller.controller_path}/#{@action_name}"
+        ['PATH_INFO', 'REQUEST_PATH', 'REQUEST_URI'].each { |key| @request.env[key] = path_info }
+        @request.env['HTTP_ACCEPT'] = AMF_MIME_TYPE
+
+        # process the request params and put them in the controller params
+        if @message.params.present?
+          @controller.amf_params = @message.params # add original array for easy access
+          @message.params.each_with_index do |item, i|
+            @request.parameters[i] = item
+          end
+        end
+
+        # set the controller request to our updated request
+        @controller.request = @request
+        @controller.response = ActionDispatch::Response.new # prevents errors
+        @controller.is_amf = true # set our conditional helper
       end
       
       def process
-        @controller.process(@action)
+        @controller.process(@action_name)
         @controller.processed_amf
       end
          
-      protected
-        def instantiate_controller
-          uri_elements =  @message.target_uri.split(".")
-          @action = uri_elements.pop.to_sym
+      private
+        def find_controller_for(controller_class_name)
+          controller_class = ActiveSupport::Dependencies.ref(controller_class_name).get
 
-          uri_elements.last << "Controller" unless uri_elements.last.include?("Controller")
-          controller_class_name = uri_elements.collect(&:camelize).join("::")
+          # check class
+          unless controller_class_name =~ /^[A-Za-z:]+Controller$/
+              && controller_class.respond_to?(:controller_name) && controller_class.respond_to?(:action_methods)
+            raise Exception.new("Service #{controller_class_name} does not exist")
+          end
 
+          # check action
+          unless controller_class.action_methods.include?(@action_name)
+            raise Exception.new("Service #{controller_class_name} does not respond to #{@action_name}")
+          end
+
+          # instantiate, rescue load exceptions
           begin
-            @controller = controller_class_name.constantize.new # handle on service
+            controller = controller_class.new
           rescue Exception => e
             Rails.logger.warn e.message.to_s
             Rails.logger.warn e.backtrace.take(10).join("\n")
-            # raise RUBYAMFException.new(RUBYAMFException.UNDEFINED_OBJECT_REFERENCE_ERROR, "There was an error loading the service class #{controller_class_name}")
             raise Exception.new("There was an error loading the service class #{controller_class_name}")
           end
-
-          unless @controller.public_methods.any? { |m| m == @action }
-            # raise RUBYAMFException.new(RUBYAMFException.METHOD_UNDEFINED_METHOD_ERROR, "There is no publicly declared method {#{@action}} in class {#{controller_class_name}}.")
-            raise Exception.new("There is no publicly declared method {#{@action}} in class {#{controller_class_name}}.")
-          end
-        end
-      
-        def prepare_controller_request
-          controller_name = @controller.class.name.gsub("Controller","").underscore
           
-          # set new controller and action names
-          [@request.parameters, @request.request_parameters, @request.path_parameters].each do |req_params|
-            req_params['controller'] = controller_name
-            req_params['action']     = @action.to_s
-          end
-
-          # set new path info & accept mime type
-          path_info = "#{controller_name}/#{@action}"
-          ['PATH_INFO', 'REQUEST_PATH', 'REQUEST_URI'].each { |key| @request.env[key] = path_info }
-          @request.env['HTTP_ACCEPT'] = AMF_MIME_TYPE
-
-          # process the request params and put them in the controller params
-          if @message.params.present?
-            @controller.amf_params = @message.params # add original array for easy access
-            @message.params.each_with_index do |item, i|
-              @request.parameters[i] = item
-            end
-          end
-
-          # set the controller request to our updated request
-          @controller.request = @request
-          @controller.response = ActionDispatch::Response.new # prevents errors
-          @controller.is_amf = true # set our conditional helper
-
+          controller
         end
     end
   end
