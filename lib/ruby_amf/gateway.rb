@@ -5,8 +5,8 @@ module RubyAMF
     class << self
       
       def call(env)
-        @use_gzip = env['ACCEPT_ENCODING'].to_s.match(/gzip,[\s]{0,1}deflate/)
         @request = ActionDispatch::Request.new(env)
+        @use_gzip = env['ACCEPT_ENCODING'].to_s.match(/gzip,[\s]{0,1}deflate/)
 
         if @request.content_type != Remoting::AMF_MIME_TYPE
           return html_response
@@ -14,13 +14,11 @@ module RubyAMF
           begin
             amf_request = Remoting::Request.new(@request)
             
-            # handle each method call in the request and build the response
+            # handle each message in the request and build the response
             amf_response = amf_request.each_message do |msg|
               Remoting::Service.new(msg, @request).process # calls action and returns result
             end
 
-            Rails.logger.warn "serializing"
-            
             response_str = @use_gzip ? Zlib::Deflate.deflate(amf_response.serialize) : amf_response.serialize
             
           rescue Exception => e
@@ -33,7 +31,6 @@ module RubyAMF
       end
       
       protected
-      
         def html_response
           [ 200,
             {"Content-Type" => "text/html"},

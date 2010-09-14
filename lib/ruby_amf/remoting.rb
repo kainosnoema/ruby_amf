@@ -116,11 +116,11 @@ module RubyAMF
         @message = message
         @request = original_request.clone
         
-        # find, instantiate and prepare controller
-        uri_elements =  @message.target_uri.split(".")
-        @action_name = uri_elements.pop.to_sym
+        # AMF operation maps directly to action name
+        @action_name = @message.operation.to_sym
 
-        controller_class_name = uri_elements.collect(&:camelize).join("::")
+        # find, instantiate and prepare controller
+        controller_class_name = @message.source.split(".").collect(&:camelize).join("::")
         @controller = find_controller_for(controller_class_name)
         
         # set new controller and action names
@@ -130,7 +130,7 @@ module RubyAMF
         end
 
         # set new path info & accept mime type
-        path_info = "#{controller.controller_path}/#{@action_name}"
+        path_info = "#{@controller.controller_path}/#{@action_name}"
         ['PATH_INFO', 'REQUEST_PATH', 'REQUEST_URI'].each { |key| @request.env[key] = path_info }
         @request.env['HTTP_ACCEPT'] = AMF_MIME_TYPE
 
@@ -160,21 +160,21 @@ module RubyAMF
           # check class
           unless controller_class_name =~ /^[A-Za-z:]+Controller$/
               && controller_class.respond_to?(:controller_name) && controller_class.respond_to?(:action_methods)
-            raise Exception.new("Service #{controller_class_name} does not exist")
+            raise Exception.new("The service class #{controller_class_name} does not exist")
           end
 
           # check action
           unless controller_class.action_methods.include?(@action_name)
-            raise Exception.new("Service #{controller_class_name} does not respond to #{@action_name}")
+            raise Exception.new("The service class #{controller_class_name} does not respond to #{@action_name}")
           end
 
           # instantiate, rescue load exceptions
           begin
             controller = controller_class.new
           rescue Exception => e
-            Rails.logger.warn e.message.to_s
-            Rails.logger.warn e.backtrace.take(10).join("\n")
-            raise Exception.new("There was an error loading the service class #{controller_class_name}")
+            exc = e.exception("Unable to load the service class #{controller_class_name}: #{e.message}")
+            exc.set_backtrace(e.backtrace)
+            raise exc
           end
           
           controller
