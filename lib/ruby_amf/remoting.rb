@@ -158,8 +158,8 @@ module RubyAMF
           controller_class = ActiveSupport::Dependencies.ref(controller_class_name).get
 
           # check class
-          unless controller_class_name =~ /^[A-Za-z:]+Controller$/
-              && controller_class.respond_to?(:controller_name) && controller_class.respond_to?(:action_methods)
+          unless (controller_class_name =~ /^[A-Za-z:]+Controller$/ && 
+            controller_class.respond_to?(:controller_name) && controller_class.respond_to?(:action_methods))
             raise Exception.new("The service class #{controller_class_name} does not exist")
           end
 
