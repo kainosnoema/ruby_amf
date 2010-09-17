@@ -104,6 +104,7 @@ module RubyAMF
           begin
             block.call(message)
           rescue Exception => e
+            RubyAMF.log_exception e
             ErrorMessage.new(message, e)
           end
         end
@@ -123,27 +124,8 @@ module RubyAMF
         controller_class_name = @message.source.split(".").collect(&:camelize).join("::")
         @controller = find_controller_for(controller_class_name)
         
-        # set new controller and action names
-        [@request.parameters, @request.request_parameters, @request.path_parameters].each do |req_params|
-          req_params['controller'] = @controller.controller_name
-          req_params['action']     = @action_name.to_s
-        end
-
-        # set new path info & accept mime type
-        path_info = "#{@controller.controller_path}/#{@action_name}"
-        ['PATH_INFO', 'REQUEST_PATH', 'REQUEST_URI'].each { |key| @request.env[key] = path_info }
-        @request.env['HTTP_ACCEPT'] = AMF_MIME_TYPE
-
-        # process the request params and put them in the controller params
-        if @message.params.present?
-          @controller.amf_params = @message.params # add original array for easy access
-          @message.params.each_with_index do |item, i|
-            @request.parameters[i] = item
-          end
-        end
-
         # set the controller request to our updated request
-        @controller.request = @request
+        @controller.request = prepared_request
         @controller.response = ActionDispatch::Response.new # prevents errors
         @controller.is_amf = true # set our conditional helper
       end
@@ -164,7 +146,7 @@ module RubyAMF
           end
 
           # check action
-          unless controller_class.action_methods.include?(@action_name)
+          unless controller_class.action_methods.include?(@action_name.to_s)
             raise Exception.new("The service class #{controller_class_name} does not respond to #{@action_name}")
           end
 
@@ -178,6 +160,29 @@ module RubyAMF
           end
           
           controller
+        end
+        
+        def prepared_request
+          # set new controller and action names
+          [@request.request_parameters, @request.path_parameters].each do |req_params|
+            req_params['controller'] = @controller.controller_name
+            req_params['action']     = @action_name.to_s
+          end
+
+          # set new path info & accept mime type
+          path_info = "#{@controller.controller_path}/#{@action_name}"
+          ['PATH_INFO', 'REQUEST_PATH', 'REQUEST_URI'].each { |key| @request.env[key] = path_info }
+          @request.env['HTTP_ACCEPT'] = AMF_MIME_TYPE
+
+          # process the request params and put them in the controller params
+          if @message.params.present?
+            @controller.amf_params = @message.params # add original array for easy access
+            @message.params.each_with_index do |item, i|
+              @request.parameters[i] = item
+            end
+          end
+          
+          @request
         end
     end
   end

@@ -1,7 +1,9 @@
 module RubyAMF
   class ClassMapping
+    OBJECT_METHODS = TypedHash.new.public_methods + Object.new.public_methods
 
-    @@ignored_methods = TypedHash.new.public_methods
+    @@ignored_attributes = ['id', 'created_at', 'updated_at']
+    @@ignored_methods = OBJECT_METHODS
 
     class << self
       
@@ -9,12 +11,20 @@ module RubyAMF
         yield mappings
       end
       
+      def ignored_attributes
+        @@ignored_attributes
+      end
+      
+      def ignored_attributes=(value)
+        @@ignored_attributes = value.collect(&:to_s) if value
+      end
+      
       def ignored_methods
         @@ignored_methods
       end
       
       def ignored_methods=(value)
-        @@ignored_methods = value + TypedHash.new.public_methods
+        @@ignored_methods = value + OBJECT_METHODS
       end
       
       #
@@ -75,26 +85,28 @@ module RubyAMF
           if mapping = mappings.mapping_for_ruby(ruby_obj.class.name)
             # read specified attributes
             mapping.attributes.each do |attr_name|
-              properties[attr_name] = ruby_obj.read_attribute(name)
+              properties[attr_name] = ruby_obj.read_attribute(attr_name)
             end
             # read loaded associations
             ruby_obj.instance_variables.each do |i_var|
               var_name = i_var.to_s[1..-1]
               if(mapping.associations.include?(var_name))
-                properties[var_name] = ruby_obj.instance_variable_get(i_var).try(:to_a)
+                association = ruby_obj.instance_variable_get(i_var)
+                association = association.to_a if association.respond_to?(:to_a) # convert has_many association to array
+                properties[var_name] = association
               end
             end
           else
-            ruby_obj.attributes.each do |key, value|
-              properties[key] = value
+            (ruby_obj.attribute_names - @@ignored_attributes).each do |attr_name|
+              properties[attr_name] = ruby_obj.read_attribute(attr_name)
             end
           end
           
         else
           (ruby_obj.public_methods - @@ignored_methods).each do |method_name|
-            next if ruby_obj.method(method_name).arity > 0
+            next if ruby_obj.method(method_name).arity != 0
             # Add them to properties if they take no arguments
-            properties[method_name.to_s] = ruby_obj.send(method_name) 
+            properties[method_name.to_s] = ruby_obj.send(method_name)
           end
         end
         properties
@@ -153,21 +165,21 @@ module RubyAMF
         def initialize(options = {})
           @as_class_name      = options[:actionscript]
           @ruby_class_name    = options[:ruby]
-          @attributes         = options[:attributes]
-          @associations       = options[:associations]
+          @attributes         = options[:attributes].collect(&:to_s) if options[:attributes]
+          @associations       = options[:associations].collect(&:to_s) if options[:associations]
           
           if @as_class_name.blank? || @ruby_class_name.blank?
-            raise Exception.new("Invalid mapping: missing mapping parameters")
+            raise StandardError.new("Invalid mapping: missing parameters")
           end
           
           begin
             object = @ruby_class_name.constantize.new
             if object.is_a?(ActiveRecord::Base)
-              @attributes ||= object.class.column_names
+              @attributes ||= object.class.column_names.to_a - ClassMapping.ignored_attributes
               @associations ||= object.class.reflect_on_all_associations.collect{|a| a.name.to_s }
             end
           rescue
-            raise Exception.new("Invalid mapping: unable to instantiate #{@ruby_class_name}")
+            raise StandardError.new("Invalid mapping: unable to instantiate #{@ruby_class_name}")
           end
         end    
       end

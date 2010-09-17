@@ -10,6 +10,7 @@ require 'ruby_amf/messages'
 require 'ruby_amf/class_mapping'
 require 'ruby_amf/remoting'
 require 'ruby_amf/gateway'
+require 'ruby_amf/logger'
 require 'ruby_amf/action_controller'
 
 # load pure extension

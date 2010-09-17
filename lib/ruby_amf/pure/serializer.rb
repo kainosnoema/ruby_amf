@@ -24,6 +24,8 @@ module RubyAMF
           write_boolean obj
         elsif obj.is_a?(Float) || obj.is_a?(Integer)
           write_number obj
+        elsif obj.is_a?(BigDecimal)
+          write_number obj.to_f
         elsif obj.is_a?(Symbol) || obj.is_a?(String)
           write_string obj.to_s
         elsif obj.is_a?(Time)
@@ -167,6 +169,8 @@ module RubyAMF
           write_false
         elsif obj.is_a?(Float)
           write_float obj
+        elsif obj.is_a?(BigDecimal)
+          write_float obj.to_f
         elsif obj.is_a?(Integer)
           write_integer obj
         elsif obj.is_a?(Symbol) || obj.is_a?(String)
