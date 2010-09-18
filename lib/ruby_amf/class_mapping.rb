@@ -84,7 +84,7 @@ module RubyAMF
         elsif(ruby_obj.is_a?(ActiveRecord::Base))
           if mapping = mappings.mapping_for_ruby(ruby_obj.class.name)
             # read specified attributes
-            mapping.attributes.each do |attr_name|
+            (mapping.attributes - @@ignored_attributes).each do |attr_name|
               properties[attr_name] = ruby_obj.read_attribute(attr_name)
             end
             # read loaded associations
@@ -175,7 +175,7 @@ module RubyAMF
           begin
             object = @ruby_class_name.constantize.new
             if object.is_a?(ActiveRecord::Base)
-              @attributes ||= object.class.column_names.to_a - ClassMapping.ignored_attributes
+              @attributes ||= object.class.column_names.to_a
               @associations ||= object.class.reflect_on_all_associations.collect{|a| a.name.to_s }
             end
           rescue
