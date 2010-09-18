@@ -49,11 +49,11 @@ module RubyAMF
       def populate_ruby_object(obj, properties, dynamic_props=nil)
         properties.merge!(dynamic_props) if dynamic_props
         hash_like = obj.respond_to?("[]=")
-        properties.each_pair do |key, value|
-          if obj.respond_to?("#{key}=")
-            obj.send("#{key}=", value)
+        (properties.keys - @@ignored_attributes).each do |attr_name|
+          if obj.respond_to?("#{attr_name}=")
+            obj.send("#{attr_name}=", properties[attr_name])
           elsif hash_like
-            obj[key.to_sym] = value
+            obj[attr_name] = properties[attr_name]
           end
         end
         obj
