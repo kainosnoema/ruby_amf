@@ -26,6 +26,12 @@ void write_amf0_number(buffer_t* buffer, VALUE rval)
 
 void write_utf_string(buffer_t* buffer, VALUE rval)
 {
+  if(rb_type(rval) != T_STRING)
+    rval = rb_funcall(rval, rb_intern("to_s"), 0);
+  
+  rval = rb_funcall(rval, rb_intern("encode"), 1, rb_str_new2("UTF-8"));
+  rval = rb_funcall(rval, rb_intern("force_encoding"), 1, rb_str_new2("ASCII-8BIT"));
+
   uint32_t len = (uint32_t)RSTRING_LEN(rval);
   write_c_word16_network(buffer, len);
   write_bytes(buffer, (u_char *)RSTRING_PTR(rval), len);
@@ -88,9 +94,9 @@ VALUE write_amf0_hash_pair(VALUE values, buffer_t * buffer, int argc, VALUE *arg
   VALUE key = RARRAY_PTR(values)[0];
   VALUE value = RARRAY_PTR(values)[1];
   
-  if(TYPE(key) == T_SYMBOL)
+  if(rb_type(key) == T_SYMBOL)
     key = rb_str_new2(rb_id2name(SYM2ID(key)));
-  
+    
   write_utf_string(buffer, key);
   write_amf0(buffer, value);
 
@@ -131,7 +137,7 @@ void write_amf0_object(buffer_t* buffer, VALUE rval)
 
 void write_amf0(buffer_t* buffer, VALUE rval)
 {
-  switch(TYPE(rval)) {
+  switch(rb_type(rval)) {
     case T_NIL: {
       write_c_int8(buffer, AMF0_NULL);
       break;

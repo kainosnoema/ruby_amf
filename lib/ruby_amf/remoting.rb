@@ -8,6 +8,7 @@ module RubyAMF
       attr_reader :amf_version, :headers, :bodies
 
       def deserialize(stream = "")
+        
         raise 'deserialize() should have been overridden by either RubyAMF::Pure or RubyAMF::Ext, the native extension!'
       end
             
@@ -49,6 +50,8 @@ module RubyAMF
     end
     
     class Request < Envelope
+      attr_reader :request_type
+      
       # initialize the envelope using an ActionDispatch::Request
       # automatically deserializes the AMF message data
       def initialize(request = nil)
@@ -72,6 +75,8 @@ module RubyAMF
           else
             message = body.data
           end
+          
+          @request_type = message.class
           
           case message
             when CommandMessage
@@ -97,6 +102,10 @@ module RubyAMF
         end
         
         return response_envelope
+      end
+      
+      def command_message?
+        @request_type == CommandMessage
       end
       
       private

@@ -13,13 +13,12 @@ require 'ruby_amf/gateway'
 require 'ruby_amf/logger'
 require 'ruby_amf/action_controller'
 
-# load pure extension
-require 'ruby_amf/pure'
-require 'ruby_amf/pure/remoting'
-
+# load pure extension, overrides serialization 
+# methods in RubyAMF::Remoting::Envelope
+# require 'ruby_amf/pure'
 
 # or
 
-# native C IO extension, defines
-# some methods in RubyAMF::Remoting
-# require 'ruby_amf_ext'
+# native C IO extension, overrides serialization
+# methods in RubyAMF::Remoting::Envelope
+require 'ruby_amf_ext'

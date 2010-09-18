@@ -17,6 +17,5 @@ void Init_Remoting();
 
 VALUE rb_datetime_new(long seconds);
 u_int rb_is_a(VALUE obj, VALUE klass);
-u_int rb_instance_of(VALUE obj, VALUE klass);
 
 #endif

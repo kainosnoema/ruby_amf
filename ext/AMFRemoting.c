@@ -74,14 +74,12 @@ static VALUE t_deserialize(VALUE self, VALUE string)
 void write_amf_request(buffer_t* buffer, VALUE envelope)
 {
   VALUE amf_version = rb_iv_get(envelope, "@amf_version");
-  VALUE headers = rb_iv_get(envelope, "@headers");
-  VALUE bodies = rb_iv_get(envelope, "@bodies");
-  
   write_c_word16_network(buffer, FIX2INT(amf_version));
-
-  uint16_t i, header_count = FIX2INT(rb_funcall(headers, rb_intern("length"), 0));
+  
+  VALUE headers = rb_iv_get(envelope, "@headers");
+  uint16_t i=0, header_count = FIX2INT(rb_funcall(headers, rb_intern("length"), 0));
   write_c_word16_network(buffer, header_count);
-  for (i=0; i<header_count; i++) {
+  for (; i<header_count; i++) {
     VALUE header = RARRAY_PTR(headers)[i];
 
     write_utf_string(buffer, rb_iv_get(header, "@name"));
@@ -92,6 +90,7 @@ void write_amf_request(buffer_t* buffer, VALUE envelope)
     write_amf0(buffer, rb_iv_get(header, "@data"));
   }
 
+  VALUE bodies = rb_iv_get(envelope, "@bodies");
   uint16_t body_count = FIX2INT(rb_funcall(bodies, rb_intern("length"), 0));
   write_c_word16_network(buffer, body_count);
   for (i=0; i<body_count; i++) {
@@ -101,6 +100,7 @@ void write_amf_request(buffer_t* buffer, VALUE envelope)
     write_utf_string(buffer, rb_iv_get(body, "@response_uri"));
     
     write_c_word32_network(buffer, -1); // body length, set to maximum
+    
     if(FIX2INT(amf_version) == 3)
     {
       write_c_int8(buffer, AMF0_AMF3_TYPE); // switch to AMF3 format

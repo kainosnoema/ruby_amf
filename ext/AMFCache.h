@@ -5,7 +5,7 @@
 
 typedef struct amf_cache {
   VALUE strings;
-  uint32_t strings_index;
+  VALUE strings_index;
 
   VALUE objects;
   uint32_t objects_index;

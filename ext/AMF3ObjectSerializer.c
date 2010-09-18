@@ -14,10 +14,10 @@
 //   uint8_t dynamic          = rb_hash_aref(traits, ID2SYM(rb_intern("dynamic")))        == Qtrue;
 //   uint32_t member_count    = (uint32_t)RARRAY_LEN(members);
 // 
-//   uint32_t class_ref = (uint32_t)amf_cache_get_traitref(buffer->amf_cache, class_name);
+//   VALUE class_ref = amf_cache_get_traitref(buffer->amf_cache, class_name);
 //   if(class_ref != Qnil)
 //   {
-//     write_c_integer(buffer, class_ref << 2 | 0x01);
+//     write_c_integer(buffer, ((uint32_t)NUM2UINT(ref)) << 2 | 0x01);
 //   }
 //   else
 //   {

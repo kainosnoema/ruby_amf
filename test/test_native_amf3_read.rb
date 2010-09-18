@@ -53,7 +53,7 @@ class Test_RUBY_AMF_AMF3_load < Test::Unit::TestCase
   end
   
   def test_load_object_type
-    o = Person.new
+    o = RubyAMF::Person.new
     o.name   = "Evan Owen"
     o.age    = 22
     o.gender = "m"

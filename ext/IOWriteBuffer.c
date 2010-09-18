@@ -22,8 +22,6 @@ inline buffer_t * buffer_new(void)
   buffer->cursor     = buffer->buffer;
   buffer->amf_cache  = amf_cache_new();
 
-  rb_gc_register_address((void*)buffer);
-
   return buffer;
 }
 
@@ -41,7 +39,7 @@ inline int buffer_grow(buffer_t* buffer, uint32_t min_length)
   
   while (buffer->allocated < min_length)
   {
-    buffer->allocated = (uint32_t) (buffer->allocated * 1.5);
+    buffer->allocated = (uint32_t) (buffer->allocated * 2);
   }
 
   u_char* old_buffer = buffer->buffer;
@@ -65,8 +63,6 @@ inline int buffer_free(buffer_t* buffer) {
         return 1;
     }
     
-    rb_gc_unregister_address((void*)buffer);
-    
     amf_cache_free(buffer->amf_cache);
     free(buffer->buffer);
     free(buffer);
@@ -86,6 +82,7 @@ inline int write_bytes(buffer_t* buffer, const u_char * bytes, uint32_t len)
   {
       return 1;
   }
+  memset(buffer->cursor, 0, sizeof(u_char)*(len));
   memcpy(buffer->cursor, bytes, len);
   buffer->cursor += len;
   return 0;

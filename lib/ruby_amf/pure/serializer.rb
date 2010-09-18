@@ -1,3 +1,4 @@
+require 'bigdecimal'
 module RubyAMF
   module Pure
     # AMF0 implementation of serializer
@@ -28,8 +29,10 @@ module RubyAMF
           write_number obj.to_f
         elsif obj.is_a?(Symbol) || obj.is_a?(String)
           write_string obj.to_s
-        elsif obj.is_a?(Time)
+        elsif obj.is_a?(Date)
           write_date obj
+        elsif obj.is_a?(Time)
+          write_time obj
         elsif obj.is_a?(Array)
           write_array obj
         elsif obj.is_a?(Hash)
@@ -70,8 +73,17 @@ module RubyAMF
       def write_date date
         @stream << AMF0_DATE_MARKER
 
-        date = date.getutc # Dup and convert to UTC
-        milli = (date.to_f * 1000).to_i
+        milli = date.strftime("%s").to_i * 1000
+        @stream << pack_double(milli)
+
+        @stream << pack_int16_network(0) # Time zone
+      end
+      
+      def write_time time
+        @stream << AMF0_DATE_MARKER
+
+        time = time.getutc # Dup and convert to UTC
+        milli = (time.to_f * 1000).to_i
         @stream << pack_double(milli)
 
         @stream << pack_int16_network(0) # Time zone
@@ -175,8 +187,10 @@ module RubyAMF
           write_integer obj
         elsif obj.is_a?(Symbol) || obj.is_a?(String)
           write_string obj.to_s
-        elsif obj.is_a?(Time)
+        elsif obj.is_a?(Date)
           write_date obj
+        elsif obj.is_a?(Time)
+          write_time obj
         elsif obj.is_a?(StringIO)
           write_byte_array obj
         # elsif obj.is_a?(RocketAMF::Values::ArrayCollection)
@@ -234,8 +248,23 @@ module RubyAMF
           @object_cache.add_obj date
 
           # Build AMF string
-          date = date.getutc # Dup and convert to UTC
-          milli = (date.to_f * 1000).to_i
+          milli = date.strftime("%s").to_i * 1000
+          @stream << AMF3_NULL_MARKER
+          @stream << pack_double(milli)
+        end
+      end
+      
+      def write_time time
+        @stream << AMF3_DATE_MARKER
+        if @object_cache[time] != nil
+          write_reference @object_cache[time]
+        else
+          # Cache date
+          @object_cache.add_obj time
+
+          # Build AMF string
+          time = time.getutc # Dup and convert to UTC
+          milli = (time.to_f * 1000).to_i
           @stream << AMF3_NULL_MARKER
           @stream << pack_double(milli)
         end

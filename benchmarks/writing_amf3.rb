@@ -20,9 +20,9 @@ def bm_amf(t, o, n = 5000, skipPure = false)
 
   td_c = s1.serialize(o).inspect
   td_p = s2.serialize(o).inspect unless skipPure
-  # cmp  = (td_c == td_p) ? '==' : '<>'
+  cmp  = (td_c == td_p) ? '==' : '<>'
   
-  puts "write #{t}"#{}": #{td_c} #{cmp} #{td_p} (#{n})"
+  puts "write #{t}: #{cmp} (#{n})"
   
   Benchmark.bm do |x|
     x.report('AMF3::C   ') { n.times { s1.serialize(o) } }
@@ -56,7 +56,7 @@ bm_amf(t, o)
 
 t = "dates"
 o = Date.today
-bm_amf(t, o, 50000, true)
+bm_amf(t, o, 5000)
  
 t = "strings"
 o = "hello"
@@ -70,21 +70,26 @@ t = "hashes"
 o = {:bye => "bye"}
 bm_amf(t, o)
 
+t = "lots o'times"
+tt = []
+
+500.times { tt << Time.now }
+bm_amf(t, tt, 10)
 
 t = "lots o'strings"
 ss = []
 
 500.times { ss << rand_string }
-bm_amf(t, ss, 100)
+bm_amf(t, ss, 10)
 
 t = "lots o'arrays"
 aa = []
 
 500.times { aa << [rand_string] }
-bm_amf(t, aa, 100)
+bm_amf(t, aa, 10)
 
 t = "lots o'hashes"
 hh = []
 
-500.times { hh << {rand_string.to_sym => rand_string} }
-bm_amf(t, hh, 100)
+500.times { hh << {rand_string => rand_string} }
+bm_amf(t, hh, 10)

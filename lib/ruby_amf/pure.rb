@@ -4,6 +4,7 @@ require 'pure/constants'
 require 'pure/binary_helpers'
 require 'pure/deserializer'
 require 'pure/serializer'
+require 'pure/remoting'
 
 module RubyAMF
   module Pure

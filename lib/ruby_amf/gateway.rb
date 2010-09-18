@@ -5,6 +5,8 @@ module RubyAMF
     class << self
       
       def call(env)
+        bench_start
+        
         @request = ActionDispatch::Request.new(env)
         @use_gzip = env['ACCEPT_ENCODING'].to_s.match(/gzip,[\s]{0,1}deflate/)
 
@@ -13,17 +15,21 @@ module RubyAMF
         else
           begin
             amf_request = Remoting::Request.new(@request)
-            
+
             # handle each message in the request and build the response
             amf_response = amf_request.each_message do |msg|
-              Remoting::Service.new(msg, @request).process # calls action and returns result
+              service = Remoting::Service.new(msg, @request)
+              RubyAMF.logger.info("Started \"#{service.request.path_info}\" at #{Time.zone.now.strftime(RubyAMF::LOG_TIME_FORMAT)}")
+              service.process # calls action and returns result
             end
 
             response_str = @use_gzip ? Zlib::Deflate.deflate(amf_response.serialize) : amf_response.serialize
             
+            unless amf_request.command_message?
+              RubyAMF.logger.info "Finished in #{bench_current}ms\n\n"
+            end
           rescue Exception => e
-            Rails.logger.warn e.message.to_s
-            Rails.logger.warn e.backtrace.take(10).join("\n")
+            RubyAMF.logger.error(RubyAMF.colorize("Error: #{e.message.to_s}", 35) + "\n" + e.backtrace.take(10).join("\n"))
           end
           
           return [200, {"Content-Type" => Remoting::AMF_MIME_TYPE}, response_str]
@@ -46,6 +52,15 @@ module RubyAMF
                 </body>
               </html>"]
           ]
+        end
+        
+        def bench_start
+          @t_start = Time.now
+          true
+        end
+
+        def bench_current
+          ((Time.now - @t_start)*1000).round
         end
     end    
   end

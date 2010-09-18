@@ -54,7 +54,7 @@ inline void amf_cache_reset(amf_cache_t* cache) {
 
 inline void amf_cache_add_objref(amf_cache_t* cache, VALUE obj)
 {
-  rb_hash_aset(cache->objects, rb_obj_id(obj), cache->objects_index);
+  rb_hash_aset(cache->objects, rb_obj_id(obj), LONG2FIX(cache->objects_index));
   cache->objects_index++;
 }
 
@@ -65,7 +65,7 @@ inline VALUE amf_cache_get_objref(amf_cache_t* cache, VALUE obj)
 
 inline void amf_cache_add_stringref(amf_cache_t* cache, VALUE obj)
 {
-  rb_hash_aset(cache->strings, obj, cache->strings_index);
+  rb_hash_aset(cache->strings, obj, LONG2FIX(cache->strings_index));
   cache->strings_index++;
 }
 
@@ -76,7 +76,7 @@ inline VALUE amf_cache_get_stringref(amf_cache_t* cache, VALUE obj)
 
 inline void amf_cache_add_traitref(amf_cache_t* cache, VALUE obj)
 {
-  rb_hash_aset(cache->traits, obj, cache->traits_index);
+  rb_hash_aset(cache->traits, obj, LONG2FIX(cache->traits_index));
   cache->traits_index++;
 }
 
@@ -104,7 +104,6 @@ inline void amf_cache_add_string(amf_cache_t* cache, VALUE obj)
 {
   rb_hash_aset(cache->strings, LONG2FIX(cache->strings_index), obj);
   cache->strings_index++;
-
 }
 
 inline VALUE amf_cache_get_string(amf_cache_t* cache, int32_t ref)
