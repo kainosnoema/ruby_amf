@@ -1,13 +1,13 @@
 module RubyAMF
   class TypedHash < Hash
-    attr_accessor :_explicit_type
+    EXPLICIT_TYPE_KEY = '_explicit_as_type'
 
     def initialize(type = nil)
-      self._explicit_type ||= type
+      self[self.class::EXPLICIT_TYPE_KEY] ||= type if type.present?
     end
     
     def ==(other)
-      other.is_a?(TypedHash) && self._explicit_type == other._explicit_type && super
+      other.is_a?(TypedHash) && self[self.class::EXPLICIT_TYPE_KEY] == other[self.class::EXPLICIT_TYPE_KEY] && super
     end
   end
 end

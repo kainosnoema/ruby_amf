@@ -138,23 +138,13 @@ void write_amf3_object(buffer_t* buffer, VALUE rval)
 
   write_c_int8(buffer, AMF3_DYNAMIC_OBJECT);
   
-  VALUE properties;
-  if(strcmp(rb_obj_classname(rval), "Hash") == 0) // Ruby Hash
-  {
+  VALUE class_name = rb_funcall(rb_cRubyAMF_ClassMapping, rb_intern("as_class_name_for"), 1, rval);
+  if(class_name != Qnil)
+    write_amf3_string(buffer, class_name);
+  else
     write_c_int8(buffer, AMF3_ANONYMOUS_OBJECT);
-    properties = rval;
-  }
-  else // typed object
-  {
-    VALUE class_name = rb_funcall(rb_cRubyAMF_ClassMapping, rb_intern("as_class_name_for"), 1, rval);
-    if(class_name != Qnil)
-      write_amf3_string(buffer, class_name);
-    else
-      write_c_int8(buffer, AMF3_ANONYMOUS_OBJECT);
     
-    properties = rb_funcall(rb_cRubyAMF_ClassMapping, rb_intern("as_properties_for"), 1, rval);
-  }
-  
+  VALUE properties = rb_funcall(rb_cRubyAMF_ClassMapping, rb_intern("as_properties_for"), 1, rval);
   rb_block_call(properties, rb_intern("each"), 0, 0, write_amf3_hash_pair, (VALUE)buffer);
 
   write_c_int8(buffer, AMF3_CLOSE_DYNAMIC_OBJECT);

@@ -20,7 +20,6 @@ module RubyAMF
   #   
   # end
   class ClassMapping
-    CLASS_CACHE = {}
     OBJECT_METHODS = TypedHash.new.public_methods + Object.new.public_methods
     
     @@ignore_attributes = ['id', 'created_at', 'updated_at']
@@ -62,9 +61,7 @@ module RubyAMF
         if ruby_class_name.nil?
           TypedHash.new(as_class_name)  # no mapping, populate a hash with an explicit type
         else
-          (CLASS_CACHE[ruby_class_name] ||= begin
-            ruby_class_name.split('::').inject(Kernel) {|scope, const_name| scope.const_get(const_name)}
-          end).new
+          deep_const_get(ruby_class_name).new
         end
       end
       
@@ -85,10 +82,14 @@ module RubyAMF
       # for serializing
       #
       def as_class_name_for(ruby_obj)
-        if(ruby_obj.is_a?(TypedHash))
-          ruby_obj._explicit_type
+        if(ruby_obj.is_a?(Hash))
+          ruby_obj[TypedHash::EXPLICIT_TYPE_KEY]
         else
-          class_name = ruby_obj.is_a?(String) ? ruby_obj : ruby_obj.class.name
+          class_name = case
+            when ruby_obj.is_a?(String) then ruby_obj 
+            when ruby_obj.is_a?(Class) then ruby_obj.name
+            else ruby_obj.class.name
+          end
           mapping = mappings.mapping_for_ruby(class_name)
           mapping.nil? ? nil : mapping.as_class_name
         end
@@ -101,7 +102,7 @@ module RubyAMF
       def as_properties_for(ruby_obj)
         properties = {}
         if ruby_obj.is_a?(Hash)
-          properties = ruby_obj
+          properties = ruby_obj.reject{|k,v| k == TypedHash::EXPLICIT_TYPE_KEY || @@ignore_attributes.include?(k.to_s)}
         
         elsif(ruby_obj.is_a?(ActiveRecord::Base))
           if mapping = mappings.mapping_for_ruby(ruby_obj.class.name)
@@ -138,6 +139,10 @@ module RubyAMF
       
         def mappings
           @@mappings ||= MappingSet.new
+        end
+        
+        def deep_const_get(ruby_class_name)
+          ruby_class_name.split('::').inject(Kernel) {|scope, const_name| scope.const_get(const_name)}
         end
     end
     
