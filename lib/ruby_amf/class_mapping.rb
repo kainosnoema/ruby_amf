@@ -1,30 +1,51 @@
 module RubyAMF
+  # module ClassMapper
+  #
+  #   this method of mapping classes doesn't work in development mode
+  #   because not all AR models are loaded at startup so the mappings
+  #   aren't neccessarily instantiated in time for AMF requests
+  #   
+  #   def self.included(base)
+  #     base.extend(ClassMethods)
+  #   end
+  #   
+  #   module ClassMethods
+  #     def map_to_actionscript(as_class_name, options = {})
+  #       options.merge!({:ruby => self.name, :actionscript => as_class_name})
+  #       ClassMapping.define do |m|
+  #         m.map options
+  #       end
+  #     end
+  #   end
+  #   
+  # end
   class ClassMapping
+    CLASS_CACHE = {}
     OBJECT_METHODS = TypedHash.new.public_methods + Object.new.public_methods
-
-    @@ignored_attributes = ['id', 'created_at', 'updated_at']
-    @@ignored_methods = OBJECT_METHODS
-
+    
+    @@ignore_attributes = ['id', 'created_at', 'updated_at']
+    @@ignore_methods = OBJECT_METHODS
+    
     class << self
       
       def define
         yield mappings
       end
       
-      def ignored_attributes
-        @@ignored_attributes
+      def ignore_attributes
+        @@ignore_attributes
       end
       
-      def ignored_attributes=(value)
-        @@ignored_attributes = value.collect(&:to_s) if value
+      def ignore_attributes=(value)
+        @@ignore_attributes = value.map(&:to_s) if value
       end
       
-      def ignored_methods
-        @@ignored_methods
+      def ignore_methods
+        @@ignore_methods
       end
       
-      def ignored_methods=(value)
-        @@ignored_methods = value + OBJECT_METHODS
+      def ignore_methods=(value)
+        @@ignore_methods = value + OBJECT_METHODS
       end
       
       #
@@ -41,15 +62,16 @@ module RubyAMF
         if ruby_class_name.nil?
           TypedHash.new(as_class_name)  # no mapping, populate a hash with an explicit type
         else
-          ruby_class = ruby_class_name.split('::').inject(Kernel) {|scope, const_name| scope.const_get(const_name)}
-          ruby_class.new
+          (CLASS_CACHE[ruby_class_name] ||= begin
+            ruby_class_name.split('::').inject(Kernel) {|scope, const_name| scope.const_get(const_name)}
+          end).new
         end
       end
       
       def populate_ruby_object(obj, properties, dynamic_props=nil)
         properties.merge!(dynamic_props) if dynamic_props
         hash_like = obj.respond_to?("[]=")
-        (properties.keys - @@ignored_attributes).each do |attr_name|
+        (properties.keys - @@ignore_attributes).each do |attr_name|
           if obj.respond_to?("#{attr_name}=")
             obj.send("#{attr_name}=", properties[attr_name])
           elsif hash_like
@@ -84,28 +106,28 @@ module RubyAMF
         elsif(ruby_obj.is_a?(ActiveRecord::Base))
           if mapping = mappings.mapping_for_ruby(ruby_obj.class.name)
             # read specified attributes
-            (mapping.attributes - @@ignored_attributes).each do |attr_name|
+            (mapping.attributes - @@ignore_attributes).each do |attr_name|
               properties[attr_name] = ruby_obj.read_attribute(attr_name)
             end
             # read loaded associations
-            ruby_obj.instance_variables.each do |i_var|
-              var_name = i_var.to_s[1..-1]
-              if(mapping.associations.include?(var_name))
-                association = ruby_obj.instance_variable_get(i_var)
+            mapping.associations.each do |assoc_name|
+              if(ruby_obj.instance_variable_defined?("@#{assoc_name}"))
+                association = ruby_obj.instance_variable_get("@#{assoc_name}")
                 association = association.to_a if association.respond_to?(:to_a) # convert has_many association to array
-                properties[var_name] = association
+                properties[assoc_name] = association
               end
             end
+            
           else
-            (ruby_obj.attribute_names - @@ignored_attributes).each do |attr_name|
+            (ruby_obj.attribute_names - @@ignore_attributes).each do |attr_name|
               properties[attr_name] = ruby_obj.read_attribute(attr_name)
             end
           end
           
         else
-          (ruby_obj.public_methods - @@ignored_methods).each do |method_name|
+          (ruby_obj.public_methods - @@ignore_methods).each do |method_name|
             next if ruby_obj.method(method_name).arity != 0
-            # Add them to properties if they take no arguments
+            # add to properties if method takes no arguments
             properties[method_name.to_s] = ruby_obj.send(method_name)
           end
         end
@@ -115,7 +137,7 @@ module RubyAMF
       private
       
         def mappings
-          @mappings ||= MappingSet.new
+          @@mappings ||= MappingSet.new
         end
     end
     
@@ -157,31 +179,34 @@ module RubyAMF
       end
       
       class Mapping
-        attr_accessor :as_class_name,
-                      :ruby_class_name,
-                      :attributes,
-                      :associations
+        @populated = false
+        attr_reader :as_class_name,
+                    :ruby_class_name,
+                    :attributes,
+                    :ignore_attributes,
+                    :associations
                       
         def initialize(options = {})
           @as_class_name      = options[:actionscript]
           @ruby_class_name    = options[:ruby]
-          @attributes         = options[:attributes].collect(&:to_s) if options[:attributes]
-          @associations       = options[:associations].collect(&:to_s) if options[:associations]
+          
+          @attributes         = options[:only].map(&:to_s) if options[:only]
+          @ignore_attributes  = options[:except].map(&:to_s) if options[:except]
+          @associations       = options[:associations].map(&:to_s) if options[:associations]
           
           if @as_class_name.blank? || @ruby_class_name.blank?
             raise StandardError.new("Invalid mapping: missing parameters")
           end
           
-          begin
-            object = @ruby_class_name.constantize.new
-            if object.is_a?(ActiveRecord::Base)
-              @attributes ||= object.class.column_names.to_a
-              @associations ||= object.class.reflect_on_all_associations.collect{|a| a.name.to_s }
-            end
-          rescue
-            raise StandardError.new("Invalid mapping: unable to instantiate #{@ruby_class_name}")
+          # catching exceptions here will cause backtraces to be useless
+          object = @ruby_class_name.constantize.new
+          
+          if object.is_a?(ActiveRecord::Base)
+            @attributes ||= object.class.column_names.to_a
+            @attributes -= @ignore_attributes if @ignore_attributes
+            @associations ||= object.class.reflect_on_all_associations.map{|a| a.name.to_s }
           end
-        end    
+        end
       end
     end
   end
