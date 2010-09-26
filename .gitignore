@@ -2,3 +2,6 @@
 
 *.o
 *.bundle
+
+ext/Makefile
+ext/mkmf.log
