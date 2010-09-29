@@ -19,8 +19,8 @@ module RubyAMF
             # handle each message in the request and build the response
             amf_response = amf_request.each_message do |msg|
               service = Remoting::Service.new(msg, @request)
-              RubyAMF.logger.info("Started \"#{service.request.path_info}\" at #{Time.zone.now.strftime(RubyAMF::LOG_TIME_FORMAT)}")
-              service.process # calls action and returns result
+              RubyAMF.logger.info("Started \"/#{service.request.path_info}\" for #{service.request.remote_ip} at #{Time.zone.now.strftime(RubyAMF::LOG_TIME_FORMAT)}")
+              return service.process # calls action and returns result
             end
 
             response_str = @use_gzip ? Zlib::Deflate.deflate(amf_response.serialize) : amf_response.serialize

@@ -11,12 +11,13 @@ ActionController::Base.class_eval do
   end
   alias_method_chain :process, :amf
   
-  def render_with_amf(options = nil, &block)
+  def render_with_amf(*args, &block)
+    options = args.first
     begin
       if options.is_a?(Hash) && @is_amf && @processed_amf.nil?
         @processed_amf = options.keys.include?(:amf) ? options.delete(:amf) : options  # store results, can't prematurely return or send_data
       end
-      render_without_amf(options, &block)
+      render_without_amf(*args, &block)
     rescue Exception => e
       raise e if !e.message.match(/^Missing template/) # suppress missing template warnings
     end
