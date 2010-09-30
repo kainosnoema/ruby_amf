@@ -20,7 +20,7 @@ module RubyAMF
   #   
   # end
   class ClassMapping
-    OBJECT_METHODS = TypedHash.new.public_methods + Object.new.public_methods
+    OBJECT_METHODS = Object.new.public_methods.freeze
     
     @@ignore_attributes = ['id', 'created_at', 'updated_at']
     @@ignore_methods = OBJECT_METHODS
@@ -44,7 +44,7 @@ module RubyAMF
       end
       
       def ignore_methods=(value)
-        @@ignore_methods = value + OBJECT_METHODS
+        @@ignore_methods = (value + OBJECT_METHODS).uniq
       end
       
       #
@@ -126,10 +126,10 @@ module RubyAMF
           end
           
         else
+          RubyAMF.logger.info "serializing custom type: #{ruby_obj.class.to_s}"
           (ruby_obj.public_methods - @@ignore_methods).each do |method_name|
-            next if ruby_obj.method(method_name).arity != 0
             # add to properties if method takes no arguments
-            properties[method_name.to_s] = ruby_obj.send(method_name)
+            properties[method_name.to_s] = ruby_obj.send(method_name) if ruby_obj.method(method_name).arity == 0
           end
         end
         properties
