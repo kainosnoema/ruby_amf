@@ -16,6 +16,8 @@ module RubyAMF
           begin
             amf_request = Remoting::Request.new(@request)
 
+            RubyAMF.logger.info amf_request.inspect
+
             # handle each message in the request and build the response
             amf_response = amf_request.each_message do |msg|
               service = Remoting::Service.new(msg, @request)

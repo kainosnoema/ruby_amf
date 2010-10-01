@@ -130,8 +130,6 @@ module RubyAMF
             # add to properties if method takes no arguments
             properties[method_name.to_s] = ruby_obj.send(method_name) if ruby_obj.method(method_name).arity == 0
           end
-          RubyAMF.logger.info "serializing custom type: #{ruby_obj.class.to_s}"
-          RubyAMF.logger.info properties.inspect
         end
         properties
       end
