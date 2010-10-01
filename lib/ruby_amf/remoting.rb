@@ -183,10 +183,10 @@ module RubyAMF
           ['PATH_INFO', 'REQUEST_PATH', 'REQUEST_URI'].each { |key| @request.env[key] = path_info }
           @request.env['HTTP_ACCEPT'] = AMF_MIME_TYPE
 
-          # process the request params and put them in the controller params
-          if @message.params.present?
-            @controller.amf_params = @message.params # add original array for easy access
-            @message.params.each_with_index do |item, i|
+          # process the request body and put all members as params in the controller params
+          if @message.body.present?
+            @controller.amf_params = @message.body # add original array for easy access
+            @message.body.each_with_index do |item, i|
               @request.parameters[i] = item
             end
           end

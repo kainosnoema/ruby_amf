@@ -36,12 +36,6 @@ module RubyAMF
         @headers = {}
         @body = nil
       end
-      
-      def target_uri
-        [@source.to_s, @operation.to_s].reject(&:blank?).join(".")
-      end
-      
-      alias_method :params, :body
     end
 
     # Maps to <tt>flex.messaging.messages.AsyncMessage</tt>
