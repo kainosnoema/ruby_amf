@@ -13,7 +13,8 @@ module RubyAMF
   end
   
   def RubyAMF.log_exception(e)
-    RubyAMF.logger.error e.to_s + "\n" + e.backtrace.take(15).join("\n") + "\n" + '...'
+    backtrace = e.backtrace.is_a?(Array) ? e.backtrace.take(15).join("\n") : e.backtrace
+    RubyAMF.logger.error e.to_s + "\n" + backtrace + "\n" + '...'
   end
   
   def RubyAMF.colorize(text, color = 36)
