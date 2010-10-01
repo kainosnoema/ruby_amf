@@ -41,9 +41,7 @@ module RubyAMF
         [@source.to_s, @operation.to_s].reject(&:blank?).join(".")
       end
       
-      def params
-        @body
-      end
+      alias_method :params, :body
     end
 
     # Maps to <tt>flex.messaging.messages.AsyncMessage</tt>
