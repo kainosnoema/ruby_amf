@@ -90,9 +90,9 @@ module RubyAMF
               
             when RemotingMessage
               # attempt to call the block using the remote message body, catch any exceptions
-              response_msg = call_block_with(message, &block)
-              response_msg = AcknowledgeMessage.new(message, response_msg) unless response_msg.is_a?(ErrorMessage)
-              
+              response = call_block_with(message, &block)
+              response_msg = response.is_a?(ErrorMessage) ? response : AcknowledgeMessage.new(message, response)
+
             else
               response_msg = call_block_with(body, &block)
           end
