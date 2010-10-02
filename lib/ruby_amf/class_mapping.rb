@@ -20,10 +20,8 @@ module RubyAMF
   #   
   # end
   class ClassMapping
-    OBJECT_METHODS = Object.new.public_methods.freeze
-    
     @@ignore_attributes = ['id', 'created_at', 'updated_at']
-    @@ignore_methods = OBJECT_METHODS
+    @@ignore_methods = []
     
     class << self
       
@@ -44,7 +42,7 @@ module RubyAMF
       end
       
       def ignore_methods=(value)
-        @@ignore_methods = (value + OBJECT_METHODS).uniq
+        @@ignore_methods = value.map(&:to_sym) if value
       end
       
       #
@@ -126,9 +124,11 @@ module RubyAMF
           end
           
         else
-          (ruby_obj.public_methods - @@ignore_methods).each do |method_name|
+          ignore_methods = (@@ignore_methods + Object.new.public_methods).uniq
+          (ruby_obj.public_methods - ignore_methods).each do |method_name|
             # add to properties if method takes no arguments
-            properties[method_name.to_s] = ruby_obj.send(method_name) if ruby_obj.method(method_name).arity == 0
+            next if ruby_obj.method(method_name).arity != 0
+            properties[method_name.to_s] = ruby_obj.send(method_name) 
           end
         end
         properties
