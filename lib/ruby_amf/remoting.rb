@@ -1,7 +1,5 @@
 module RubyAMF
   module Remoting
-    AMF_MIME_TYPE = "application/x-amf".freeze
-
     # Containers for the AMF request/response
     class Envelope
       include RubyAMF::Messages
@@ -84,7 +82,6 @@ module RubyAMF
                 response_msg = AcknowledgeMessage.new(message)
               else
                 e = Exception.new("CommandMessage #{message.operation} not implemented")
-                e.set_backtrace ["RubyAMF::Remoting::Request each_message"]
                 response_msg = ErrorMessage.new(message, e)
               end
               
@@ -113,7 +110,7 @@ module RubyAMF
           begin
             block.call(message)
           rescue Exception => e
-            RubyAMF.log_exception e
+            RubyAMF.logger.exception e
             ErrorMessage.new(message, e)
           end
         end
@@ -181,7 +178,7 @@ module RubyAMF
           # set new path info & accept mime type
           path_info = "#{@controller.controller_path}/#{@action_name}"
           ['PATH_INFO', 'REQUEST_PATH', 'REQUEST_URI'].each { |key| @request.env[key] = path_info }
-          @request.env['HTTP_ACCEPT'] = AMF_MIME_TYPE
+          @request.env['HTTP_ACCEPT'] = RubyAMF::AMF_MIME_TYPE
 
           # process the request body and put all members as params in the controller params
           if @message.body.present?

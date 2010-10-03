@@ -1,6 +1,8 @@
 require 'zlib'
 require 'benchmark'
 module RubyAMF
+  AMF_MIME_TYPE = "application/x-amf".freeze
+  
   class Gateway
     class << self
       
@@ -10,7 +12,7 @@ module RubyAMF
         @request = ActionDispatch::Request.new(env)
         @use_gzip = env['ACCEPT_ENCODING'].to_s.match(/gzip,[\s]{0,1}deflate/)
 
-        if @request.content_type != Remoting::AMF_MIME_TYPE
+        if @request.content_type != RubyAMF::AMF_MIME_TYPE
           return html_response
         else
           begin
@@ -19,7 +21,7 @@ module RubyAMF
             # handle each message in the request and build the response
             amf_response = amf_request.each_message do |msg|
               service = Remoting::Service.new(msg, @request)
-              RubyAMF.logger.info("Started \"/#{service.request.path_info}\" for #{@request.remote_ip} at #{Time.zone.now.strftime(RubyAMF::LOG_TIME_FORMAT)}")
+              RubyAMF.logger.info("Started \"/#{service.request.path_info}\" for #{@request.remote_ip} at #{Time.zone.now.strftime(RubyAMF::Logger::TIME_FORMAT)}")
               service.process # calls action and returns result
             end
 
@@ -29,10 +31,10 @@ module RubyAMF
               RubyAMF.logger.info "Finished in #{bench_current}ms\n\n"
             end
           rescue Exception => e
-            RubyAMF.logger.error(RubyAMF.colorize("Error: #{e.message.to_s}", 35) + "\n" + e.backtrace.take(10).join("\n"))
+            RubyAMF.logger.exception e
           end
           
-          return [200, {"Content-Type" => Remoting::AMF_MIME_TYPE}, response_str]
+          return [200, {"Content-Type" => RubyAMF::AMF_MIME_TYPE}, response_str]
         end
       end
       
