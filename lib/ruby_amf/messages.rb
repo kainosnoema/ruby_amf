@@ -97,7 +97,7 @@ module RubyAMF
         unless exception.nil?
           @e = exception
           @faultCode = @e.class.name
-          @faultDetail = @e.backtrace.join("\n")
+          @faultDetail = @e.backtrace.is_a?(Array) ? @e.backtrace.join("\n") : @e.backtrace
           @faultString = @e.message
         end
       end
