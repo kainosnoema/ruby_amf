@@ -20,7 +20,12 @@ module RubyAMF
     @logger ||= begin
       log_file = File.open("#{Rails.root}/log/ruby_amf.log", 'a+')
       log_file.sync = true
-      buffered_logger = Logger.new(log_file)
+      log_level = if Rails.env.production?
+        ActiveSupport::BufferedLogger::Severity::ERROR
+      else
+        ActiveSupport::BufferedLogger::Severity::DEBUG
+      end
+      buffered_logger = Logger.new(log_file, log_level)
       buffered_logger.auto_flushing = 1
       buffered_logger
     end
