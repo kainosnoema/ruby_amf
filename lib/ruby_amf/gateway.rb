@@ -32,6 +32,7 @@ module RubyAMF
             end
           rescue Exception => e
             RubyAMF.logger.exception e
+            RubyAMF.logger.error "Original Request:\n"+@request.inspect+"\n"
           end
           
           return [200, {"Content-Type" => RubyAMF::AMF_MIME_TYPE}, response_str]
